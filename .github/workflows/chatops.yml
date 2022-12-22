@@ -37,7 +37,9 @@ jobs:
         id: prcomm_serve_model
   test:
     runs-on: self-hosted
+    needs: label-pr
     if: steps.prcomm_test.outputs.BOOL_TRIGGERED == 'true'
+    steps:
       # This step clones the branch of the PR associated with the triggering phrase, but only if it is triggered.
       - name: clone branch of PR
         uses: actions/checkout@master
@@ -52,7 +54,9 @@ jobs:
           USERNAME: ${{ steps.prcomm_test.outputs.COMMENTER_USERNAME }}
   train:
     runs-on: self-hosted
+    needs: label-pr
     if: steps.prcomm_train_model.outputs.BOOL_TRIGGERED == 'true'
+    steps:
       # This step clones the branch of the PR associated with the triggering phrase, but only if it is triggered.
       - name: clone branch of PR
         uses: actions/checkout@master
@@ -63,7 +67,9 @@ jobs:
       - run : ls -l
   serve:
     runs-on: self-hosted
+    needs: label-pr
     if: steps.prcomm_serve_model.outputs.BOOL_TRIGGERED == 'true'
+    steps:
       # This step clones the branch of the PR associated with the triggering phrase, but only if it is triggered.
       - name: clone branch of PR
         uses: actions/checkout@master
