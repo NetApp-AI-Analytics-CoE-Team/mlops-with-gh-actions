@@ -24,4 +24,4 @@ jobs:
         # This step is a toy example that illustrates how you can use outputs from the pr-command action
       - name: build, train and run pipeline
         if: steps.prcomm_train.outputs.BOOL_TRIGGERED == 'true'
-        run: echo "train model" & ls -l 
+        run: cat actions_test
