@@ -3,9 +3,10 @@ on: [issue_comment]
 
 jobs:
   label-pr-debug:
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     steps:
       - name: listen for PR Comments (debug)
+        id: prcomm_debug
         uses: machine-learning-apps/actions-chatops@master
         with:
           APP_PEM: ${{ secrets.APP_PEM }}
@@ -14,21 +15,17 @@ jobs:
           INDICATOR_LABEL: "test-label"
         env: # you must supply GITHUB_TOKEN
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        id: prcomm_test
-  test:
-    runs-on: self-hosted
-    needs: label-pr-debug
-    if: needs.label-pr-debug.outputs.BOOL_TRIGGERED == 'true'
-    steps:
       # This step clones the branch of the PR associated with the triggering phrase, but only if it is triggered.
       - name: clone branch of PR
+        if: steps.prcomm_debug.outputs.BOOL_TRIGGERED == 'true'
         uses: actions/checkout@master
         with:
-          ref: ${{ needs.label-pr-debug.outputs.SHA }}
+          ref: ${{ steps.prcomm_debug.outputs.SHA }}
         # This step is a toy example that illustrates how you can use outputs from the pr-command action
       - name: print variables
+        if: steps.prcomm_debug.outputs.BOOL_TRIGGERED == 'true'
         run: echo "${USERNAME} made a triggering comment on PR# ${PR_NUMBER} for ${BRANCH_NAME}"
         env: 
-          BRANCH_NAME: ${{ needs.label-pr-debug.outputs.BRANCH_NAME }}
-          PR_NUMBER: ${{ needs.label-pr-debug.outputs.PULL_REQUEST_NUMBER }}
-          USERNAME: ${{ needs.label-pr-debug.outputs.COMMENTER_USERNAME }}
+          BRANCH_NAME: ${{ steps.prcomm_debug.outputs.BRANCH_NAME }}
+          PR_NUMBER: ${{ steps.prcomm_debug.outputs.PULL_REQUEST_NUMBER }}
+          USERNAME: ${{ steps.prcomm_debug.outputs.COMMENTER_USERNAME }}
