@@ -28,4 +28,4 @@ jobs:
         # expects pipeline package is located in "./pipline.yaml"
       - name: deploy and run pipeline
         if: steps.prcomm_train.outputs.BOOL_TRIGGERED == 'true'
-        run: python3 ./deploy_pipeline.py --cloud-environment=${{ steps.prcomm_train.outputs.TRAILING_TOKEN}} --pipeline-package-path=pipeline.yaml --pipeline-version=${{ steps.prcomm_train.outputs.SHA }}
+        run: python3 ./github_actions/deploy_pipeline.py --cloud-environment=${{ steps.prcomm_train.outputs.TRAILING_TOKEN}} --pipeline-package-path=pipeline.yaml --pipeline-version=${{ steps.prcomm_train.outputs.SHA }}
