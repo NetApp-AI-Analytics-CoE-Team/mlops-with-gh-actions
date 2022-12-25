@@ -7,14 +7,14 @@ from yaml import safe_load
 def deploy_pipeline(
     pipeline_yaml_path:str, 
     deploy_only:bool, 
-    deploy_enviroment:str, 
+    deploy_environment:str, 
     # experiment_name:str, 
     # namespace:str,
     pipeline_version_name:str=None, 
     ):
 
     # get kfp client connection
-    client_info = get_kubeflow_client(deploy_enviroment)
+    client_info = get_kubeflow_client(deploy_environment)
     kfp_client = client_info["kfp_client"]   
     kfp_client.set_user_namespace(client_info["kfp_namespace"])
     experiment_name = client_info["kfp_experinment_name"]
@@ -75,7 +75,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     ret = deploy_pipeline(
-        deploy_enviroment=args.cloud_environment, 
+        deploy_environment=args.cloud_environment, 
         pipeline_yaml_path=args.pipeline_package_path,
         pipeline_version_name=args.pipeline_version,
         deploy_only=args.deploy_only, 

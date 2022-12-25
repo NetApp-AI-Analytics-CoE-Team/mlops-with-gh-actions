@@ -4,6 +4,7 @@ from yaml import safe_load
 import re
 import requests
 from urllib.parse import urlsplit
+import os
 
 def get_istio_auth_session(url: str, username: str, password: str) -> dict:
     """
@@ -102,18 +103,19 @@ def get_istio_auth_session(url: str, username: str, password: str) -> dict:
 
     return auth_session
 
-def get_kubeflow_client(enviroment:str):
+def get_kubeflow_client(environment:str):
 
     # loading environments config
-    with open('environments.yaml', 'r') as yml:
+    env_file_path = os.path.join(os.path.dirname(os.path.abspath(__file__)),'environments.yaml')
+    with open(env_file_path, 'r') as yml:
         config = safe_load(yml)
 
-    KUBECONFIG_CONTEXT = config[enviroment]['kubeconfig_context']
-    KUBEFLOW_ENDPOINT = config[enviroment]['kubeflow_endpoint']
-    KUBEFLOW_USERNAME = config[enviroment]['kubeflow_username']
-    KUBEFLOW_PASSWORD = config[enviroment]['kubeflow_password']
-    KUBEFLOW_NAMESPACE = config[enviroment]['kubeflow_namespace']
-    KUBEFLOW_EXPERIMENT_NAME = config[enviroment]['kubeflow_experiment_name']
+    KUBECONFIG_CONTEXT = config[environment]['kubeconfig_context']
+    KUBEFLOW_ENDPOINT = config[environment]['kubeflow_endpoint']
+    KUBEFLOW_USERNAME = config[environment]['kubeflow_username']
+    KUBEFLOW_PASSWORD = config[environment]['kubeflow_password']
+    KUBEFLOW_NAMESPACE = config[environment]['kubeflow_namespace']
+    KUBEFLOW_EXPERIMENT_NAME = config[environment]['kubeflow_experiment_name']
 
     # get authentication for kubeflow
     auth_session = get_istio_auth_session(

@@ -1,0 +1,14 @@
+on-prem:
+  kubeconfig_context: "kubernetes-admin-cluster.local@cluster.local"
+  kubeflow_endpoint: "http://10.128.214.217:31537"
+  kubeflow_namespace: "kubeflow-user-example-com"
+  kubeflow_username: "user@example.com"
+  kubeflow_password: "12341234"
+  kubeflow_experiment_name: "sample-exp"
+cloud:
+  kubeconfig_context: "kubernetes-admin-cluster.local@cluster.local"
+  kubeflow_endpoint: "http://10.128.214.217:31537"
+  kubeflow_namespace: "kubeflow-user-example-com"
+  kubeflow_username: "user@example.com"
+  kubeflow_password: "12341234"
+  kubeflow_experiment_name: "sample-exp"
