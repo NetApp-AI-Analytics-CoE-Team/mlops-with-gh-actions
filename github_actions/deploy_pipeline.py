@@ -3,21 +3,20 @@ from client import get_kubeflow_client
 import argparse
 import datetime
 from yaml import safe_load
+import json
+import os
 
 def deploy_pipeline(
     pipeline_yaml_path:str, 
-    deploy_only:bool, 
     deploy_environment:str, 
-    # experiment_name:str, 
-    # namespace:str,
-    pipeline_version_name:str=None, 
+    pipeline_version_name:str, 
     ):
 
     # get kfp client connection
     client_info = get_kubeflow_client(deploy_environment)
     kfp_client = client_info["kfp_client"]   
     kfp_client.set_user_namespace(client_info["kfp_namespace"])
-    experiment_name = client_info["kfp_experinment_name"]
+    # experiment_name = client_info["kfp_experinment_name"]
 
     # check pipeline existence
     with open(pipeline_yaml_path, 'r') as yml:
@@ -34,52 +33,82 @@ def deploy_pipeline(
             description=pipeline_desc
             )
 
-        if deploy_only:
-            print('new pipeline has been successfully uploaded')
-            return pipeline_info
+        # print('new pipeline has been successfully uploaded')
+        print(pipeline_info)
 
-    # upload package as pipeline version if specified pipeline does not exist
-    else:
-        # if pipeline version name is not specified, use timestamp as pipeline version name
-        if pipeline_version_name == None:
-            t_delta = datetime.timedelta(hours=9)
-            JST = datetime.timezone(t_delta, 'JST')
-            now = datetime.datetime.now(JST)
-            pipeline_version_name = now.strftime('%Y%m%d%H%M%S') # YYYYMMDDhhmmss
+    pipeline_version_info = kfp_client.upload_pipeline_version(
+        pipeline_package_path=pipeline_yaml_path,
+        pipeline_name=pipeline_name,
+        pipeline_version_name=pipeline_version_name,
+        description=pipeline_desc
+    )
 
-        pipeline_version_info = kfp_client.upload_pipeline_version(
-            pipeline_package_path=pipeline_yaml_path,
-            pipeline_name=pipeline_name,
-            pipeline_version_name=pipeline_version_name,
-            description=pipeline_desc
-        )
+    # print('pipeline version has been successfully uploaded')
+    print(pipeline_version_info)
 
-        if deploy_only:
-            print('pipeline version has been successfully uploaded')
-            return pipeline_version_info
+    return(pipeline_version_info)
+
+def run_pipeline(
+    deploy_environment:str,
+    pipeline_version_id:str,
+    params:str = None 
+    ):
+
+    # get kfp client connection
+    client_info = get_kubeflow_client(deploy_environment)
+    kfp_client = client_info["kfp_client"]   
+    kfp_client.set_user_namespace(client_info["kfp_namespace"])
+    experiment_name = client_info["kfp_experinment_name"]
+
+    # get experiment id by name
+    experiment_info = kfp_client.get_experiment(experiment_name=experiment_name, namespace=client_info["kfp_namespace"])
+
+    # generate job name
+    t_delta = datetime.timedelta(hours=9)
+    JST = datetime.timezone(t_delta, 'JST')
+    now = datetime.datetime.now(JST)
+    # timestamp = now.strftime('%Y%m%d%H%M%S') # YYYYMMDDhhmmss
+    job_name = "Run at " + str(now)
 
     # create run
-    # run_pipeline()
-    print('successfully launched the pipeline run')
-    return("run_id")
+    run_info = kfp_client.run_pipeline(
+        experiment_id=experiment_info.id,
+        version_id=pipeline_version_id,
+        job_name=job_name,
+        params=params
+    )
+    # print('successfully launched the pipeline run')
+    print(run_info)
+
+    return run_info
 
 if __name__ == "__main__":
     # define command line arguments 
     parser = argparse.ArgumentParser()
     parser.add_argument('-c', '--cloud-environment', help="specify 'on-prem' or 'cloud'", required=True)
-    # parser.add_argument('-n', '--namespace', help="namespace where the pipeline runs", required=True)
     parser.add_argument('-f', '--pipeline-package-path', help="pipeline package path", required=True)
-    parser.add_argument('-v', '--pipeline-version', help="pipeline version name")
+    parser.add_argument('-v', '--pipeline-version', help="pipeline version name", required=True)
     parser.add_argument('-d', '--deploy-only', action='store_true', help="specify if you don't want to run pipeline")
-    # parser.add_argument('-e', '--experiment-name', help="existing experiment name(mandatory unless you specify -d/--deploy-only)")
     args = parser.parse_args()
 
-    ret = deploy_pipeline(
+    # deploy pipeline
+    pipeline_version_info = deploy_pipeline(
         deploy_environment=args.cloud_environment, 
         pipeline_yaml_path=args.pipeline_package_path,
-        pipeline_version_name=args.pipeline_version,
-        deploy_only=args.deploy_only, 
-        # namespace=args.namespace,
-        # experiment_name=args.experiment_name, 
+        pipeline_version_name=args.pipeline_version
         )
-    print(ret)
+    print(type(pipeline_version_info))
+
+    # run pipeline
+    if not args.deploy_only:
+        # read params file
+        pipeline_params_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), os.pardir)
+        pipeline_params_file = os.path.join(pipeline_params_dir, "pipeline_params.yaml")
+        with open(pipeline_params_file, 'r') as yml:
+            pipeline_params_content = safe_load(yml)
+
+        run_info = run_pipeline(
+            deploy_environment=args.cloud_environment, 
+            pipeline_version_id=pipeline_version_info.id,
+            params=pipeline_params_content
+        )

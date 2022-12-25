@@ -21,11 +21,11 @@ jobs:
         uses: actions/checkout@master
         with:
           ref: ${{ steps.prcomm_train.outputs.SHA }}
-        # expects pipeline function is declared in "./pipline.py"
+      # expects pipeline function is declared in "./pipline.py"
       - name: build pipeline
         if: steps.prcomm_train.outputs.BOOL_TRIGGERED == 'true'
         run: python3 ./pipeline.py
-        # expects pipeline package is located in "./pipline.yaml"
+      # expects pipeline package is located in "./pipline.yaml"
       - name: deploy and run pipeline
         if: steps.prcomm_train.outputs.BOOL_TRIGGERED == 'true'
         run: python3 ./github_actions/deploy_pipeline.py --cloud-environment=${{ steps.prcomm_train.outputs.TRAILING_TOKEN}} --pipeline-package-path=pipeline.yaml --pipeline-version=${{ steps.prcomm_train.outputs.SHA }}
