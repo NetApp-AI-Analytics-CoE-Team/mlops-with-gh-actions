@@ -12,7 +12,7 @@ jobs:
           APP_PEM: ${{ secrets.APP_PEM }}
           APP_ID: ${{ secrets.APP_ID }}
           TRIGGER_PHRASE: "/train-model"
-          INDICATOR_LABEL: "train-model"
+          INDICATOR_LABEL: "model-training-initiated"
         env: # you must supply GITHUB_TOKEN
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       # This step clones the branch of the PR associated with the triggering phrase, but only if it is triggered.
@@ -21,7 +21,11 @@ jobs:
         uses: actions/checkout@master
         with:
           ref: ${{ steps.prcomm_train.outputs.SHA }}
-        # This step is a toy example that illustrates how you can use outputs from the pr-command action
-      - name: build, train and run pipeline
+        # expects pipeline function is declared in "./pipline.py"
+      - name: build pipeline
         if: steps.prcomm_train.outputs.BOOL_TRIGGERED == 'true'
-        run: cat actions_test
+        run: python3 ./pipeline.py
+        # expects pipeline package is located in "./pipline.yaml"
+      - name: deploy and run pipeline
+        if: steps.prcomm_train.outputs.BOOL_TRIGGERED == 'true'
+        run: python3 ./deploy_pipeline.py --cloud-environment=${{ steps.prcomm_train.outputs.TRAILING_TOKEN}} --pipeline-package-path=pipeline.yaml --pipeline-version=${{ steps.prcomm_train.outputs.SHA }}
