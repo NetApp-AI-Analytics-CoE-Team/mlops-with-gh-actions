@@ -27,11 +27,13 @@ jobs:
         run: python3 ./pipeline.py
       # expects pipeline package is located in "./pipline.yaml"
       - name: deploy and run pipeline
+        id: train_launcher
         if: steps.prcomm_train.outputs.BOOL_TRIGGERED == 'true'
         run: python3 ./github_actions/deploy_pipeline.py --cloud-environment=${{ steps.prcomm_train.outputs.TRAILING_TOKEN}} --pipeline-package-path=pipeline.yaml --pipeline-version=${{ steps.prcomm_train.outputs.SHA }}
+        continue-on-error: true
       # success message
       - name: commenting on PR (success) 
-        if: ${{ steps.error_execution.outcome == 'success' }}
+        if: ${{ steps.train_launcher.outcome == 'success' }}
         uses: actions/github-script@v6
         with:
           script: |
@@ -43,8 +45,8 @@ jobs:
               check your RUN's status on Kubeflow UI.'
             })
       # error message
-      - name: commenting on PR (success) 
-        if: ${{ steps.error_execution.outcome == 'failure' }}
+      - name: commenting on PR (failure) 
+        if: ${{ steps.train_launcher.outcome == 'failure' }}
         uses: actions/github-script@v6
         with:
           script: |
