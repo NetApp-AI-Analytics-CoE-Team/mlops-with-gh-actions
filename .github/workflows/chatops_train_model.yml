@@ -29,3 +29,29 @@ jobs:
       - name: deploy and run pipeline
         if: steps.prcomm_train.outputs.BOOL_TRIGGERED == 'true'
         run: python3 ./github_actions/deploy_pipeline.py --cloud-environment=${{ steps.prcomm_train.outputs.TRAILING_TOKEN}} --pipeline-package-path=pipeline.yaml --pipeline-version=${{ steps.prcomm_train.outputs.SHA }}
+      # success message
+      - name: commenting on PR (success) 
+        if: ${{ steps.error_execution.outcome == 'success' }}
+        uses: actions/github-script@v6
+        with:
+          script: |
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: '🚀　Successfully launched the pipeline for ```${{ steps.prcomm_train.outputs.SHA }}``` 🚀
+              check your RUN's status on Kubeflow UI.'
+            })
+      # error message
+      - name: commenting on PR (success) 
+        if: ${{ steps.error_execution.outcome == 'failure' }}
+        uses: actions/github-script@v6
+        with:
+          script: |
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: '❌　Failed to launch the pipeline for ```${{ steps.prcomm_train.outputs.SHA }}``` ❌
+              check Action tab to find the error cause.'
+            })
