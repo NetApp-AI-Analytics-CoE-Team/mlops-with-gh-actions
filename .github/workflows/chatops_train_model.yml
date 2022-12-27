@@ -42,7 +42,7 @@ jobs:
               owner: context.repo.owner,
               repo: context.repo.repo,
               body: '🚀　Successfully launched the pipeline for ```${{ steps.prcomm_train.outputs.SHA }}``` 🚀
-              check your RUN's status on Kubeflow UI.'
+                check your RUN's status on Kubeflow UI.'
             })
       # error message
       - name: commenting on PR (failure) 
@@ -55,5 +55,5 @@ jobs:
               owner: context.repo.owner,
               repo: context.repo.repo,
               body: '❌　Failed to launch the pipeline for ```${{ steps.prcomm_train.outputs.SHA }}``` ❌
-              check Action tab to find the error cause.'
+                check Action tab to find the error cause.'
             })
