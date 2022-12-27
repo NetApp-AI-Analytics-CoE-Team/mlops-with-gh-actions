@@ -53,8 +53,5 @@ jobs:
               issue_number: context.issue.number,
               owner: context.repo.owner,
               repo: context.repo.repo,
-              body: |
-                |
-                ❌　Failed to launch the pipeline for ```${{ steps.prcomm_train.outputs.SHA }}``` ❌
-                Check Action tab to find the error cause
+              body: '❌　Failed to launch the pipeline for ```${{ steps.prcomm_train.outputs.SHA }}``` ❌'
             })
