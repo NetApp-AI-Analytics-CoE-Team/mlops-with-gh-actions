@@ -28,4 +28,8 @@ jobs:
         env: 
           BRANCH_NAME: ${{ steps.prcomm_debug.outputs.BRANCH_NAME }}
           PR_NUMBER: ${{ steps.prcomm_debug.outputs.PULL_REQUEST_NUMBER }}
-          USERNAME: ${{ steps.prcomm_debug.outputs.COMMENTER_USERNAME }}
+          USERNAME: ${{ steps.prcomm_debug.outputs.COMMENTER_USERNAME }}  
+      - name: View context attributes
+        uses: actions/github-script@v6
+        with:
+          script: console.log(context)

@@ -1,15 +1,15 @@
 # copy this file as "environments.yaml" and edit as your Kubeflow environment
-on-prem:
+<ENVINRONMENT_NAME>:
   kubeconfig_context: "kubernetes-admin-cluster.local@cluster.local"
   kubeflow_endpoint: "http://<YOUR_KUBEFLOW_URL>"
   kubeflow_namespace: "kubeflow-user-example-com"
   kubeflow_username: "user@example.com"
   kubeflow_password: "12341234"
-  kubeflow_experiment_name: <YOUR_EXISTING_EXPERIMENT>
-cloud:
+  kubeflow_experiment_name: <YOUR_EXISTING_EXPERIMENT_NAME>
+<ENVINRONMENT_NAME>:
   kubeconfig_context: "kubernetes-admin-cluster.local@cluster.local"
   kubeflow_endpoint: "http://<YOUR_KUBEFLOW_URL>"
   kubeflow_namespace: "kubeflow-user-example-com"
   kubeflow_username: "user@example.com"
   kubeflow_password: "12341234"
-  kubeflow_experiment_name: <YOUR_EXISTING_EXPERIMENT>
+  kubeflow_experiment_name: <YOUR_EXISTING_EXPERIMENT_NAME>
