@@ -42,7 +42,7 @@ jobs:
     steps:
       # success message
       - name: commenting on PR (success) 
-        if: ${{ jobs.train_model.result == 'success' }}
+        if: ${{ needs.train_model.result == 'success' }}
         uses: actions/github-script@v6
         with:
           script: |
@@ -53,7 +53,7 @@ jobs:
               body: '🚀　Successfully launched the pipeline for ```${{ needs.train-model.outputs.commit_sha }}```. Check the status of RUN on your Kubeflow UI.'
             })
       - name: applying label
-        if: ${{ jobs.train_model.result == 'success' }}
+        if: ${{ needs.train_model.result == 'success' }}
         uses: actions/github-script@v6
         with:
           script: |
@@ -65,7 +65,7 @@ jobs:
             })
       # error message
       - name: commenting on PR (failure) 
-        if: ${{ jobs.train_model.result == 'failure' }}
+        if: ${{ needs.train_model.result == 'failure' }}
         uses: actions/github-script@v6
         with:
           script: |
