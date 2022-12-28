@@ -4,6 +4,8 @@ on: [issue_comment]
 jobs:
   train-model:
     runs-on: self-hosted
+    outputs: 
+      commit_sha: ${{ steps.output_sha.outputs.sha }}
     steps:
       - name: listen for PR Comments (train)
         id: prcomm_train
@@ -12,10 +14,12 @@ jobs:
           APP_PEM: ${{ secrets.APP_PEM }}
           APP_ID: ${{ secrets.APP_ID }}
           TRIGGER_PHRASE: "/train-model"
-          INDICATOR_LABEL: "model-training-initiated"
+          INDICATOR_LABEL: "model-training-triggered"
         env: # you must supply GITHUB_TOKEN
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       # This step clones the branch of the PR associated with the triggering phrase, but only if it is triggered.
+      - id: output_sha
+        run: echo "::set-output name=sha::${{ steps.prcomm_train.outputs.SHA }}"
       - name: clone branch of PR
         if: steps.prcomm_train.outputs.BOOL_TRIGGERED == 'true'
         uses: actions/checkout@master
@@ -30,10 +34,15 @@ jobs:
         id: train_launcher
         if: steps.prcomm_train.outputs.BOOL_TRIGGERED == 'true'
         run: python3 ./github_actions/deploy_pipeline.py --cloud-environment=${{ steps.prcomm_train.outputs.TRAILING_TOKEN}} --pipeline-package-path=pipeline.yaml --pipeline-version=${{ steps.prcomm_train.outputs.SHA }}
-        continue-on-error: true
+        # continue-on-error: true
+  messaging:
+    runs-on: self-hosted
+    if: ${{ always() }}
+    needs: train-model
+    steps:
       # success message
       - name: commenting on PR (success) 
-        if: ${{ steps.train_launcher.outcome == 'success' }}
+        if: ${{ jobs.train_model.result == 'success' }}
         uses: actions/github-script@v6
         with:
           script: |
@@ -41,11 +50,22 @@ jobs:
               issue_number: context.issue.number,
               owner: context.repo.owner,
               repo: context.repo.repo,
-              body: '🚀　Successfully launched the pipeline for ```${{ steps.prcomm_train.outputs.SHA }}``` 🚀'
+              body: '🚀　Successfully launched the pipeline for ```${{ needs.train-model.outputs.commit_sha }}```. Check the status of RUN on your Kubeflow UI.'
+            })
+      - name: applying label
+        if: ${{ jobs.train_model.result == 'success' }}
+        uses: actions/github-script@v6
+        with:
+          script: |
+            github.rest.issues.addLabels({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              labels: ["model-training-initiated"]
             })
       # error message
       - name: commenting on PR (failure) 
-        if: ${{ steps.train_launcher.outcome == 'failure' }}
+        if: ${{ jobs.train_model.result == 'failure' }}
         uses: actions/github-script@v6
         with:
           script: |
@@ -53,5 +73,5 @@ jobs:
               issue_number: context.issue.number,
               owner: context.repo.owner,
               repo: context.repo.repo,
-              body: '❌　Failed to launch the pipeline for ```${{ steps.prcomm_train.outputs.SHA }}``` ❌'
+              body: '❌　Failed to launch the pipeline for ```${{ needs.train-model.outputs.commit_sha }}```. Check Actions tab to find the error cause.'
             })
