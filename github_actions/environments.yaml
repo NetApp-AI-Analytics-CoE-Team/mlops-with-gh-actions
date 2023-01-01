@@ -5,6 +5,11 @@ on-prem:
   kubeflow_username: "user@example.com"
   kubeflow_password: "12341234"
   kubeflow_experiment_name: "sample-exp"
+  artifact_repository:
+    s3_region: "ap-northeast-1"
+    s3_access_key_base64: "QUtJQVRWUlRFVDNPRldHQU5XVkY="
+    s3_secret_key_base64: "WVYrMVpqYkZDS2NOSFBsUXlNUFROd3NqMHVISmh3c1FrQUtRSUJkQQ=="
+  serving_namespace: "kubeflow-user-example-com"
 cloud:
   kubeconfig_context: "kubernetes-admin-cluster.local@cluster.local"
   kubeflow_endpoint: "http://10.128.214.217:31537"
@@ -12,3 +17,8 @@ cloud:
   kubeflow_username: "user@example.com"
   kubeflow_password: "12341234"
   kubeflow_experiment_name: "sample-exp"
+  artifact_repository:
+    s3_region: "ap-northeast-1"
+    s3_access_key_base64: "QUtJQVRWUlRFVDNPRldHQU5XVkY="
+    s3_secret_key_base64: "WVYrMVpqYkZDS2NOSFBsUXlNUFROd3NqMHVISmh3c1FrQUtRSUJkQQ=="
+  serving_namespace: "kubeflow-user-example-com"

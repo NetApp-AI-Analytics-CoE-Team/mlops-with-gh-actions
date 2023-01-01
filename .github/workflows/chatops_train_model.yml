@@ -50,7 +50,7 @@ jobs:
               issue_number: context.issue.number,
               owner: context.repo.owner,
               repo: context.repo.repo,
-              body: '🚀　Successfully launched the pipeline for ```${{ needs.train-model.outputs.commit_sha }}```. Check the status of RUN on your Kubeflow UI.'
+              body: '🚀Successfully launched the pipeline for SHA:```${{ needs.train-model.outputs.commit_sha }}```. Check the status of RUN ID: on your Kubeflow UI.'
             })
       - name: applying label
         if: ${{ needs.train-model.result == 'success' }}
@@ -73,5 +73,5 @@ jobs:
               issue_number: context.issue.number,
               owner: context.repo.owner,
               repo: context.repo.repo,
-              body: '❌　Failed to launch the pipeline for ```${{ needs.train-model.outputs.commit_sha }}```. Check Actions tab to find the error cause.'
+              body: '❌Failed to launch the pipeline for SHA:```${{ needs.train-model.outputs.commit_sha }}```. Check Actions tab to find the error cause.'
             })

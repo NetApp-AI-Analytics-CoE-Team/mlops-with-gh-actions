@@ -97,7 +97,6 @@ if __name__ == "__main__":
         pipeline_yaml_path=args.pipeline_package_path,
         pipeline_version_name=args.pipeline_version
         )
-    print(type(pipeline_version_info))
 
     # run pipeline
     if not args.deploy_only:
