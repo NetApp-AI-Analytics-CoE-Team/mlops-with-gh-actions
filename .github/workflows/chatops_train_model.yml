@@ -2,7 +2,7 @@ name: ChatOps for training AI/ML model
 on: [issue_comment]
 
 jobs:
-  initiate-model-training:
+  initiate-model-training-run:
     runs-on: self-hosted
     outputs: 
       deploy_env: ${{ steps.output_deploy_env.outputs.deploy_env }}
@@ -49,14 +49,14 @@ jobs:
       - id: output_kubeflow_url
         run: echo "kubeflow_url=`python3 ./github_actions/client.py ${{ steps.prcomm_train.outputs.TRAILING_TOKEN }}`" >> $GITHUB_OUTPUT
   # nortify result of building/uploading/running pipeline as a PR comment
-  initiate-model-training-result:
+  initiate-model-training-run-result:
     runs-on: self-hosted
     if: ${{ always() }}
-    needs: initiate-model-training
+    needs: initiate-model-training-run
     steps:
       # in case of succeeded
       - name: commenting on PR (success) 
-        if: ${{ needs.initiate-model-training.result == 'success' }}
+        if: ${{ needs.initiate-model-training-run.result == 'success' }}
         uses: actions/github-script@v6
         with:
           script: |
@@ -64,14 +64,14 @@ jobs:
               issue_number: context.issue.number,
               owner: context.repo.owner,
               repo: context.repo.repo,
-              body: `# 🚀 Successfully launched the pipeline for SHA: **${{ needs.initiate-model-training.outputs.commit_sha }}**
+              body: `# 🚀 Successfully launched the pipeline for SHA: **${{ needs.initiate-model-training-run.outputs.commit_sha }}**
                 
-                RUN ID: \\\`\\\`\\\`${{ needs.initiate-model-training.outputs.run_id }}\\\`\\\`\\\`
-                I will nortify when the RUN is completed, or you can check detailed status on the [Kubeflow UI](${{ needs.initiate-model-training.kubeflow_ui }}).`
+                RUN ID: \\\`\\\`\\\`${{ needs.initiate-model-training-run.outputs.run_id }}\\\`\\\`\\\`
+                I will nortify when the RUN is completed, or you can check detailed status on the [Kubeflow UI](${{ needs.initiate-model-training-run.outputs.kubeflow_url }}).`
             })
       # in case of failed
       - name: commenting on PR (failure) 
-        if: ${{ needs.initiate-model-training.result == 'failure' }}
+        if: ${{ needs.initiate-model-training-run.result == 'failure' }}
         uses: actions/github-script@v6
         with:
           script: |
@@ -79,29 +79,28 @@ jobs:
               issue_number: context.issue.number,
               owner: context.repo.owner,
               repo: context.repo.repo,
-              body: `# ❌ Failed to launch the pipeline for SHA: **${{ needs.initiate-model-training.outputs.commit_sha }}**
+              body: `# ❌ Failed to launch the pipeline for SHA: **${{ needs.initiate-model-training-run.outputs.commit_sha }}**
 
-                Check Actions tab and [Kubeflow UI](${{ needs.initiate-model-training.kubeflow_ui }}) to find the error cause.`
+                Check Actions tab and [Kubeflow UI](${{ needs.initiate-model-training-run.kubeflow_ui }}) to find the error cause.`
             })
   # wait for completion of pipline RUN that is initiated previous job
   # default timeout is 5 hours
   wait-for-run-completion:
     runs-on: self-hosted
     needs: 
-      - initiate-model-training
-      - initiate-model-training-result
+      - initiate-model-training-run
+      - initiate-model-training-run-result
     outputs: 
-      model_uri: ${{ steps.output_run_status.outputs.run_status }}
-      run_status: ${{ steps.output_model_uri.outputs.model_uri }}
+      run_status: ${{ steps.output_run_status.outputs.run_status }}
     steps:
       - name: clone branch of PR
         uses: actions/checkout@master
         with:
-          ref: ${{ needs.initiate-model-training.outputs.commit_sha }}
+          ref: ${{ needs.initiate-model-training-run.outputs.commit_sha }}
       - name: wait for pipeline run
         id: run_waiter
         run: | 
-          python3 ./github_actions/wait_run_completion.py --cloud-environment=${{ needs.initiate-model-training.outputs.deploy_env }} --run-id=${{ needs.initiate-model-training.outputs.run_id }} --output-file=tmp_run_status.txt
+          python3 ./github_actions/wait_run_completion.py --cloud-environment=${{ needs.initiate-model-training-run.outputs.deploy_env }} --run-id=${{ needs.initiate-model-training-run.outputs.run_id }} --output-file=tmp_run_status.txt
       - id: output_run_status
         run: echo "run_status=`cat tmp_run_status.txt`" >> $GITHUB_OUTPUT
   # nortify result of pipeline RUN as a PR comment
@@ -110,14 +109,14 @@ jobs:
     runs-on: self-hosted
     # if: ${{ always() }}
     needs:
-      - initiate-model-training
+      - initiate-model-training-run
       - wait-for-run-completion
     steps:
       # in case of run succeedes
       - name: read artifact of run
         if: needs.wait-for-run-completion.outputs.run_status == 'Succeeded'
         run: |
-          python3 ./github_actions/read_pipeline_output.py --cloud-environment=${{ needs.initiate-model-training.outputs.deploy_env }} --run-id=${{ needs.initiate-model-training.outputs.run_id }} --component-name=upload-savedmodel --artifact-name=upload-savedmodel-Output --output-file=tmp_model_uri.txt
+          python3 ./github_actions/read_pipeline_output.py --cloud-environment=${{ needs.initiate-model-training-run.outputs.deploy_env }} --run-id=${{ needs.initiate-model-training-run.outputs.run_id }} --component-name=upload-savedmodel --artifact-name=upload-savedmodel-Output --output-file=tmp_model_uri.txt
       # gets artifact uri and stores it as repository env to deploy model
       - id: output_model_uri
         if: needs.wait-for-run-completion.outputs.run_status == 'Succeeded'
@@ -131,10 +130,12 @@ jobs:
               issue_number: context.issue.number,
               owner: context.repo.owner,
               repo: context.repo.repo,
-              body: `# ✅ RUN ID: **${{ needs.initiate-model-training.outputs.run_id }}** has been successfully completed
+              body: `# ✅ RUN ID: **${{ needs.initiate-model-training-run.outputs.run_id }}** has been successfully completed
                 
                 Artifact of RUN is uploaded into your artifact repository.
-                URI: ${{ steps.output_run_status.outputs.run_status }}`
+                URI: ${{ steps.output_run_status.outputs.run_status }}
+                
+                Also you can check detailed status of RUN in the [Kubeflow UI](${{ needs.initiate-model-training-run.outputs.kubeflow_url }})`
             })
       - name: applying label (Succeeded)
         if: needs.wait-for-run-completion.outputs.run_status == 'Succeeded'
@@ -157,9 +158,9 @@ jobs:
               issue_number: context.issue.number,
               owner: context.repo.owner,
               repo: context.repo.repo,
-              body: `# ❌ RUN ID: **${{ needs.initiate-model-training.outputs.run_id }}** has been completed with failure status
+              body: `# ❌ RUN ID: **${{ needs.initiate-model-training-run.outputs.run_id }}** has been completed with failure status
 
-                Access to the [Kubeflow UI](${{ needs.initiate-model-training.kubeflow_ui }}) and check details of RUN to find error cause.`
+                Access to the [Kubeflow UI](${{ needs.initiate-model-training-run.outputs.kubeflow_url }}) and check details of RUN to find error cause.`
             })
       - name: applying label (Failed)
         if: needs.wait-for-run-completion.outputs.run_status == 'Failed'
@@ -182,9 +183,9 @@ jobs:
               issue_number: context.issue.number,
               owner: context.repo.owner,
               repo: context.repo.repo,
-              body: `# 🕛 RUN ID: **${{ needs.initiate-model-training.outputs.run_id }}** has exceeded timeout and NOT been completed yet
+              body: `# 🕛 RUN ID: **${{ needs.initiate-model-training-run.outputs.run_id }}** has exceeded timeout and NOT been completed yet
                 
-                Access to the [Kubeflow UI](${{ needs.initiate-model-training.kubeflow_ui }}) and check the latest status of RUN.`
+                Access to the [Kubeflow UI](${{ needs.initiate-model-training-run.outputs.kubeflow_url }}) and check the latest status of RUN.`
             })
       - name: applying label (timeout)
         if: steps.run_waiter.outputs.run_status == 'TimeoutError'
