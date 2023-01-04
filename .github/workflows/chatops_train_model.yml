@@ -67,7 +67,7 @@ jobs:
           lf='\n'
           message="## :pushpin: Actions Result - Deploy and Run ML pipeline"
           message+="${lf}:rocket: Successfully launched the pipeline for SHA: \`${{ needs.initiate-model-training-run.outputs.commit_sha }}\`"
-          message+="## :runner: Run information"
+          message+="${lf}## :runner: Run information"
           message+="${lf}Kubeflow Endpoint: ${{ needs.initiate-model-training-run.outputs.kubeflow_url }}"
           message+="${lf}Kubeflow Profile(k8s namespace): ${{ needs.initiate-model-training-run.outputs.kubeflow_profile }}"
           message+="${lf}RUN ID: ${{ needs.initiate-model-training-run.outputs.run_id }}"
@@ -153,7 +153,7 @@ jobs:
       - name: read artifact of run (dataset version)
         if: needs.wait-for-run-completion.outputs.run_status == 'Succeeded'
         run: |
-          python3 ./github_actions/read_pipeline_output.py --cloud-environment=${{ needs.initiate-model-training-run.outputs.deploy_env }} --run-id=${{ needs.initiate-model-training-run.outputs.run_id }} --component-name=create_snapshot --artifact-name=create_snapshot-Output --output-file=tmp_dataset_version.txt
+          python3 ./github_actions/read_pipeline_output.py --cloud-environment=${{ needs.initiate-model-training-run.outputs.deploy_env }} --run-id=${{ needs.initiate-model-training-run.outputs.run_id }} --component-name=create-snapshot --artifact-name=create-snapshot-Output --output-file=tmp_dataset_version.txt
       - id: output_dataset_version
         if: needs.wait-for-run-completion.outputs.run_status == 'Succeeded'
         run: echo "dataset_version=`cat tmp_dataset_version.txt`" >> $GITHUB_OUTPUT
@@ -167,9 +167,9 @@ jobs:
           lf='\n'
           message="## :pushpin: Actions Result - Result of ML Pipeline Run"
           message+="${lf}:white_check_mark: Successfully launched the pipeline for SHA: \`${{ needs.initiate-model-training-run.outputs.commit_sha }}\`"
-          message+="## :brain: Model information"
+          message+="${lf}## :brain: Model information"
           message+="${lf}Artifact URI: ${{ steps.output_run_status.outputs.run_status }}""
-          message+="## :mag: How to reproduce the model"
+          message+="${lf}## :mag: How to reproduce the model"
           message+="${lf}To reproduce this model, perform following tasks"
           message+="${lf}1. Login to workstation which can access to k8s API"
           message+="${lf}2. Restore dataset version by using NetApp DataOps Tooklkit"
