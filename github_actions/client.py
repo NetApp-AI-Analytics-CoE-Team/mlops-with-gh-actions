@@ -142,9 +142,17 @@ def get_kubeflow_client(environment:str):
 
 # for github actions
 if __name__ == "__main__":
-  if len(sys.argv) == 2:
-    kfp_client_info = get_kubeflow_client(sys.argv[1])
-    print(kfp_client_info["kfp_endpoint"])
-  else:
-    print("Usage: python3 FILE_NAME.py <ENVIRONMENT_NAME>")
-    sys.exit(1)
+    ERR = "Usage: python3 FILE_NAME.py <ENVIRONMENT_NAME> <'namespace' or 'endpoint'>"
+
+    if len(sys.argv) == 3:
+        kfp_client_info = get_kubeflow_client(sys.argv[1])
+        if sys.argv[2] == "namespace":
+            print(kfp_client_info["kfp_namespace"])
+        elif sys.argv[2] == "endpoint"
+            print(kfp_client_info["kfp_endpoint"])
+        else: 
+            print(ERR)
+            sys.exit(1)
+    else:
+        print(ERR)
+        sys.exit(1)
