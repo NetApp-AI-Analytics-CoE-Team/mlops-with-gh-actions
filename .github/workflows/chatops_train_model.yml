@@ -56,6 +56,7 @@ jobs:
     steps:
       # in case of succeeded
       - name: setup comment message (success)
+        if: ${{ needs.initiate-model-training-run.result == 'success' }}
         id: success_comment
         run: |
           base_ref="${{ github.event.pull_request.base.ref }}"
@@ -67,19 +68,6 @@ jobs:
           message+="${lf}Kubeflow Endpoint: ${{ needs.initiate-model-training-run.outputs.kubeflow_url }}"          
           message+="${lf}RUN ID: ${{ needs.initiate-model-training-run.outputs.run_id }}"
           echo "message=${message}" >> $GITHUB_OUTPUT
-      # in case of failed
-      - name: setup comment message (success)
-        id: success_comment
-        run: |
-          base_ref="${{ github.event.pull_request.base.ref }}"
-          head_sha="${{ github.event.pull_request.head.sha }}"
-          lf='\n'
-          message="## :pushpin: Actions Result - Deploy and Run ML pipeline"
-          message+="${lf}:x: Failed to launch the pipeline for SHA: \`${{ needs.initiate-model-training-run.outputs.commit_sha }}\`"
-          message+="${lf}Check Actions tab and Kubeflow UI to find the error cause."          
-          message+="${lf}RUN ID: ${{ needs.initiate-model-training-run.outputs.run_id }}"
-          echo "message=${message}" >> $GITHUB_OUTPUT
-      # post PR comment
       - name: commenting on PR (success) 
         if: ${{ needs.initiate-model-training-run.result == 'success' }}
         uses: actions/github-script@v6
@@ -90,6 +78,29 @@ jobs:
               owner: context.repo.owner,
               repo: context.repo.repo,
               body: '${{ steps.success_comment.outputs.message }}'
+      # in case of failed
+      - name: setup comment message (failure)
+        if: ${{ needs.initiate-model-training-run.result == 'failure' }}
+        id: failure_comment
+        run: |
+          base_ref="${{ github.event.pull_request.base.ref }}"
+          head_sha="${{ github.event.pull_request.head.sha }}"
+          lf='\n'
+          message="## :pushpin: Actions Result - Deploy and Run ML pipeline"
+          message+="${lf}:x: Failed to launch the pipeline for SHA: \`${{ needs.initiate-model-training-run.outputs.commit_sha }}\`"
+          message+="${lf}Check Actions tab and Kubeflow UI to find the error cause."          
+          message+="${lf}RUN ID: ${{ needs.initiate-model-training-run.outputs.run_id }}"
+          echo "message=${message}" >> $GITHUB_OUTPUT
+      - name: commenting on PR (failure) 
+        if: ${{ needs.initiate-model-training-run.result == 'failure' }}
+        uses: actions/github-script@v6
+        with:
+          script: |
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: '${{ steps.failure_comment.outputs.message }}'
   # wait for completion of pipline RUN that is initiated previous job
   # default timeout is 5 hours
   wait-for-run-completion:
