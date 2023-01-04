@@ -63,7 +63,7 @@ jobs:
         id: success_comment
         run: |
           lf='\n'
-          message="## :pushpin: Actions Result - Deploy and Run ML pipeline"
+          message="## :pushpin: Actions Result - Build, Deploy and Create ML pipeline Run"
           message+="${lf}:rocket: Successfully launched the pipeline for SHA: \`${{ needs.initiate-model-training-run.outputs.commit_sha }}\`"
           message+="${lf}You will be notified when the pipeline RUN is completed or exceeded timeout."
           message+="${lf}Or you can check detailed status of RUN in Kubeflow UI using below informations."
@@ -91,7 +91,7 @@ jobs:
         id: failure_comment
         run: |
           lf='\n'
-          message="## :pushpin: Actions Result - Deploy and Run ML pipeline"
+          message="## :pushpin: Actions Result - Build, Deploy and Create ML pipeline Run"
           message+="${lf}:x: Failed to launch the pipeline for SHA: \`${{ needs.initiate-model-training-run.outputs.commit_sha }}\`"
           message+="${lf}Check Actions tab and Kubeflow UI to find the error cause."  
           message+="<br />"
@@ -163,7 +163,39 @@ jobs:
       - name: setup comment message (Succeeded)
         if: needs.wait-for-run-completion.outputs.run_status == 'Succeeded'
         id: success_comment
-        run: echo "message=`cat ./github_actions/pr_comments_template/complete_run_success.md`" >> $GITHUB_OUTPUT
+        run: | 
+          lf='\n'
+          message="## :pushpin: Actions Result - Result of ML Pipeline Run"
+          message+="${lf}:white_check_mark: Pipeline RUN: \`${{ needs.initiate-model-training-run.outputs.run_id }}\` has been successfully completed."
+          message+="${lf}## :brain: Model information"
+          message+="${lf}Model package is stored in the artifact repository."
+          message+="<br />"
+          message+="${lf}Artifact URI: ${{ steps.output_run_status.outputs.run_status }}""
+          message+="${lf}## :mag: How to reproduce the model"
+          message+="${lf}To reproduce this model, you can create a Jupyter Workspace which contains source code, hyper parameters, and dataset version by performing following tasks"
+          message+="${lf}1. Login to workstation which can access to k8s API"
+          message+="${lf}2. Restore dataset version by using NetApp DataOps Tooklkit"
+          message+="${lf}\`\`\`bash"
+          message+="${lf}# Install NetApp DataOps Toolkit"
+          message+="${lf}$ python3 -m pip install netapp-dataops-k8s"
+          message+="${lf}"
+          message+="${lf}# Clone PVC from snapshot that was taken at model training"
+          message+="${lf}$ netapp_dataops_k8s_cli.py clone volume --namespace=${{ needs.initiate-model-training-run.outputs.kubeflow_profile }} --source-snapshot-name=${{ steps.output_dataset_version.outputs.dataset_version }} --new-pvc-name=clone-${{ steps.output_dataset_version.outputs.dataset_version }}"
+          message+="${lf}\`\`\`"
+          message+="${lf}3. Create Jupyter workspace with cloned PVC by using NetApp DataOps Toolkit"
+          message+="${lf}\`\`\`bash"
+          message+="${lf}# Create Jupyter workspace using cloned PVC"
+          message+="${lf}$ netapp_dataops_k8s_cli.py create jupyterlab --namespace=${{ needs.initiate-model-training-run.outputs.kubeflow_profile }} --workspace-name=reproduce-${{ needs.initiate-model-training-run.outputs.run_id }} --size=10Gi --mount-pvc=clone-${{ steps.output_dataset_version.outputs.dataset_version }} --nvidia-gpu=1"
+          message+="${lf}\`\`\`"
+          message+="${lf}4. Connect the workspace provisioned by NetApp DataOps Tooklkit"
+          message+="${lf}You can find Workspace URL in result of \`netapp_dataops_k8s_cli.py create jupyterlab\` command."
+          message+="${lf}5. Resotre the source code and hyper parameters from GitHub commit"
+          message+="${lf}\`\`\`bash"
+          message+="${lf}# Open a terminal in Jupyter Workspace and execute below commandline"
+          message+="${lf}$ git clone ${{ context.repo.repo }} ."
+          message+="${lf}$ git reset -hard ${{ needs.initiate-model-training-run.outputs.commit_sha }}"
+          message+="${lf}\`\`\`"
+          echo "message=${message}" >> $GITHUB_OUTPUT
       - name: commenting on PR (Succeeded) 
         if: needs.wait-for-run-completion.outputs.run_status == 'Succeeded'
         uses: actions/github-script@v6
@@ -191,50 +223,56 @@ jobs:
       # in case of run failed
       - name: commenting on PR (Failed) 
         if: needs.wait-for-run-completion.outputs.run_status == 'Failed'
-        uses: actions/github-script@v6
-        with:
-          script: |
-            github.rest.issues.createComment({
-              issue_number: context.issue.number,
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              body: `# ❌ RUN ID: **${{ needs.initiate-model-training-run.outputs.run_id }}** has been completed with failure status
-
-                Access to the ![Kubeflow UI](${{ needs.initiate-model-training-run.outputs.kubeflow_url }}) and check details of RUN to find error cause.`
-            })
-      - name: applying label (Failed)
+        id: failed_comment
+        run: | 
+          lf='\n'
+          message="## :pushpin: Actions Result - Result of ML Pipeline Run"
+          message+="${lf}:x: Pipeline RUN: \`${{ needs.initiate-model-training-run.outputs.run_id }}\` has been completed with failure."
+          message+="<br />"
+          message+="Check detailed status of pipeline RUN in Kubeflow UI"
+          message+="${lf}## :runner: Run information"
+          message+="${lf}Kubeflow Endpoint: ${{ needs.initiate-model-training-run.outputs.kubeflow_url }}"
+          message+="${lf}Kubeflow Profile(k8s namespace): ${{ needs.initiate-model-training-run.outputs.kubeflow_profile }}"
+          message+="${lf}RUN ID: ${{ needs.initiate-model-training-run.outputs.run_id }}"
+          echo "message=${message}" >> $GITHUB_OUTPUT      
+      - name: commenting on PR (Failed) 
         if: needs.wait-for-run-completion.outputs.run_status == 'Failed'
         uses: actions/github-script@v6
         with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
-            github.rest.issues.addLabels({
-              issue_number: context.issue.number,
+            const params = {
               owner: context.repo.owner,
               repo: context.repo.repo,
-              labels: ["training-run-failed"]
-            })
+              issue_number: context.issue.number,
+              body: '${{ steps.failed_comment.outputs.message }}'
+            }
+            await github.rest.issues.createComment(params)
       # in case of run timeouted
+      - name: commenting on PR (timeout) 
+        if: needs.wait-for-run-completion.outputs.run_status == 'TimeoutError'
+        id: timeout_comment
+        run: | 
+          lf='\n'
+          message="## :pushpin: Actions Result - Result of ML Pipeline Run"
+          message+="${lf}:x: Pipeline RUN: \`${{ needs.initiate-model-training-run.outputs.run_id }}\` has exceeded timeout and NOT been completed yet."
+          message+="<br />"
+          message+="Check detailed status of pipeline RUN in Kubeflow UI"
+          message+="${lf}## :runner: Run information"
+          message+="${lf}Kubeflow Endpoint: ${{ needs.initiate-model-training-run.outputs.kubeflow_url }}"
+          message+="${lf}Kubeflow Profile(k8s namespace): ${{ needs.initiate-model-training-run.outputs.kubeflow_profile }}"
+          message+="${lf}RUN ID: ${{ needs.initiate-model-training-run.outputs.run_id }}"
+          echo "message=${message}" >> $GITHUB_OUTPUT      
       - name: commenting on PR (timeout) 
         if: needs.wait-for-run-completion.outputs.run_status == 'TimeoutError'
         uses: actions/github-script@v6
         with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
-            github.rest.issues.createComment({
-              issue_number: context.issue.number,
+            const params = {
               owner: context.repo.owner,
               repo: context.repo.repo,
-              body: `# 🕛 RUN ID: **${{ needs.initiate-model-training-run.outputs.run_id }}** has exceeded timeout and NOT been completed yet
-                
-                Access to the ![Kubeflow UI](${{ needs.initiate-model-training-run.outputs.kubeflow_url }}) and check the latest status of RUN.`
-            })
-      - name: applying label (timeout)
-        if: steps.run_waiter.outputs.run_status == 'TimeoutError'
-        uses: actions/github-script@v6
-        with:
-          script: |
-            github.rest.issues.addLabels({
               issue_number: context.issue.number,
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              labels: ["training-run-unknown-status"]
-            })
+              body: '${{ steps.timeout_comment.outputs.message }}'
+            }
+            await github.rest.issues.createComment(params)
