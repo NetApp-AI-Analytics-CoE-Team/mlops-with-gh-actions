@@ -148,7 +148,7 @@ if __name__ == "__main__":
         kfp_client_info = get_kubeflow_client(sys.argv[1])
         if sys.argv[2] == "namespace":
             print(kfp_client_info["kfp_namespace"])
-        elif sys.argv[2] == "endpoint"
+        elif sys.argv[2] == "endpoint":
             print(kfp_client_info["kfp_endpoint"])
         else: 
             print(ERR)
