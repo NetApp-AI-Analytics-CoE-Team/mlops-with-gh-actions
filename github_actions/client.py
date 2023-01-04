@@ -5,6 +5,7 @@ import re
 import requests
 from urllib.parse import urlsplit
 import os
+import sys
 
 def get_istio_auth_session(url: str, username: str, password: str) -> dict:
     """
@@ -133,7 +134,17 @@ def get_kubeflow_client(environment:str):
     ret = {
         "kfp_client": client,
         "kfp_namespace": KUBEFLOW_NAMESPACE,
-        "kfp_experinment_name": KUBEFLOW_EXPERIMENT_NAME
+        "kfp_experinment_name": KUBEFLOW_EXPERIMENT_NAME,
+        "kfp_endpoint": KUBEFLOW_ENDPOINT # for github actions
     }
 
     return ret
+
+# for github actions
+if __name__ == "__main__":
+  if len(sys.argv) == 2:
+    kfp_client_info = get_kubeflow_client(sys.argv[1])
+    print(kfp_client_info["kfp_endpoint"])
+  else:
+    print("Usage: python3 FILE_NAME.py <ENVIRONMENT_NAME>")
+    sys.exit(1)
