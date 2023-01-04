@@ -90,7 +90,7 @@ jobs:
   wait-run-completion:
     runs-on: self-hosted
     needs: train-model
-    output: 
+    outputs: 
       model_uri: 
       run_status:
     steps:
