@@ -62,11 +62,11 @@ jobs:
         if: ${{ needs.initiate-model-training-run.result == 'success' }}
         id: success_comment
         run: |
-          base_ref="${{ github.event.pull_request.base.ref }}"
-          head_sha="${{ github.event.pull_request.head.sha }}"
           lf='\n'
           message="## :pushpin: Actions Result - Deploy and Run ML pipeline"
           message+="${lf}:rocket: Successfully launched the pipeline for SHA: \`${{ needs.initiate-model-training-run.outputs.commit_sha }}\`"
+          message+="${lf}You will be notified when the pipeline RUN is completed or exceeded timeout."
+          message+="${lf}Or you can check detailed status of RUN in Kubeflow UI using below informations."
           message+="${lf}## :runner: Run information"
           message+="${lf}Kubeflow Endpoint: ${{ needs.initiate-model-training-run.outputs.kubeflow_url }}"
           message+="${lf}Kubeflow Profile(k8s namespace): ${{ needs.initiate-model-training-run.outputs.kubeflow_profile }}"
@@ -90,8 +90,6 @@ jobs:
         if: ${{ needs.initiate-model-training-run.result == 'failure' }}
         id: failure_comment
         run: |
-          base_ref="${{ github.event.pull_request.base.ref }}"
-          head_sha="${{ github.event.pull_request.head.sha }}"
           lf='\n'
           message="## :pushpin: Actions Result - Deploy and Run ML pipeline"
           message+="${lf}:x: Failed to launch the pipeline for SHA: \`${{ needs.initiate-model-training-run.outputs.commit_sha }}\`"
@@ -161,37 +159,8 @@ jobs:
       - name: setup comment message (Succeeded)
         if: needs.wait-for-run-completion.outputs.run_status == 'Succeeded'
         id: success_comment
-        run: |
-          base_ref="${{ github.event.pull_request.base.ref }}"
-          head_sha="${{ github.event.pull_request.head.sha }}"
-          lf='\n'
-          message="## :pushpin: Actions Result - Result of ML Pipeline Run"
-          message+="${lf}:white_check_mark: Successfully launched the pipeline for SHA: \`${{ needs.initiate-model-training-run.outputs.commit_sha }}\`"
-          message+="${lf}## :brain: Model information"
-          message+="${lf}Artifact URI: ${{ steps.output_model_uri.outputs.model_uri }}"
-          message+="${lf}## :mag: How to reproduce the model"
-          message+="${lf}To reproduce this model, perform following tasks"
-          message+="${lf}1. Login to workstation which can access to k8s API"
-          message+="${lf}2. Restore dataset version by using NetApp DataOps Tooklkit"
-          message+="${lf}\`\`\`bash"
-          message+="${lf}# Install NetApp DeepOps Toolkit"
-          message+="${lf}$ python3 -m pip install netapp-deepops-k8s"
-          message+="<br />"
-          message+="${lf}# Clone PVC from snapshot that was taken at model training"
-          message+="${lf}$ netapp_dataops_k8s_cli.py clone volume --namespace=${{ needs.initiate-model-training-run.outputs.kubeflow_profile }} --source-snapshot-name=${{ steps.output_dataset_version.outputs.dataset_version }} --new-pvc-name=clone-${{ steps.output_dataset_version.outputs.dataset_version }}"
-          message+="<br />"
-          message+="${lf}# Create Jupyter workspace using cloned PVC"
-          message+="${lf}$ netapp_dataops_k8s_cli.py create jupyterlab --namespace=${{ needs.initiate-model-training-run.outputs.kubeflow_profile }} --workspace-name=reproduce-${{ needs.initiate-model-training-run.outputs.run_id }} --size=10Gi --mount-pvc=clone-${{ steps.output_dataset_version.outputs.dataset_version }} --nvidia-gpu=1"
-          message+="${lf}\`\`\`"
-          message+="${lf}3. Connect the workspace provisioned by NetApp DataOps Tooklkit"
-          message+="${lf}4. Resotre the source code and hyper parameters from GitHub commit"
-          message+="${lf}\`\`\`bash"
-          message+="${lf}# Open a terminal in Jupyter Workspace and execute below commandline"
-          message+="${lf}$ git clone <repository> ."
-          message+="${lf}$ git reset -hard ${{ needs.initiate-model-training-run.outputs.commit_sha }}"
-          message+="${lf}\`\`\`"
-          echo "message=${message}" >> $GITHUB_OUTPUT
-      - name: commenting on PR (success) 
+        run: echo "message=`cat ./github_actions/pr_comments_template/complete_run_success.md`" >> $GITHUB_OUTPUT
+      - name: commenting on PR (Succeeded) 
         if: needs.wait-for-run-completion.outputs.run_status == 'Succeeded'
         uses: actions/github-script@v6
         with:
