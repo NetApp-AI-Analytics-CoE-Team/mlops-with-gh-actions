@@ -109,12 +109,13 @@ if __name__ == "__main__":
         pipeline_yaml_path=args.pipeline_package_path,
         pipeline_version_name=args.pipeline_version
         )
-    if pipeline_version_info = None:
+    if pipeline_version_info == None:
         sys.exit(1)
             
     # run pipeline
     if args.deploy_only:
-        sys.stdout.write(pipeline_version_info)
+        # sys.stdout.write(pipeline_version_info)
+        sys.exit(0)
     else:
         # read params file
         pipeline_params_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), os.pardir)
@@ -128,9 +129,9 @@ if __name__ == "__main__":
             pipeline_version_id=pipeline_version_info.id,
             params=pipeline_params_content
         )
-        if run_info = None:
+        if run_info == None:
             sys.exit(1)
     
-        print(run_info)
-        sys.stdout.write(run_info.id)
+        os.environ['RUN_ID'] = run_info.id
+        # sys.stdout.write(run_info.id)
         sys.exit(0)

@@ -62,4 +62,7 @@ if __name__ == "__main__":
     artifact = get_artifact(
         run_id=args.run_id, node_id=node_id, artifact_name=args.artifact_name, client=kfp_client,
     )
-    sys.stdout.write(artifact)
+    # sys.stdout.write(artifact)
+    print(artifact)
+    os.environ['MODEL_URI'] = artifact
+    sys.exit(0)
