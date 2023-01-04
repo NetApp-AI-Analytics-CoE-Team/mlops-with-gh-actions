@@ -1,5 +1,5 @@
 ## :pushpin: Actions Result - Result of ML Pipeline Run"
-white_check_mark: Pipeline RUN (ID: ${{ needs.initiate-model-training-run.outputs.run_id }}) has been successfully completed.
+:white_check_mark: Pipeline RUN: ${{ needs.initiate-model-training-run.outputs.run_id }} has been successfully completed.
 
 ## :brain: Model information"
 Model package is stored in the artifact repository. 
