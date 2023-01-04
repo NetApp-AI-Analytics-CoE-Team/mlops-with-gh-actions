@@ -42,7 +42,7 @@ jobs:
         id: train_launcher
         if: steps.prcomm_train.outputs.BOOL_TRIGGERED == 'true'
         run: |
-          python3 ./github_actions/deploy_pipeline.py --cloud-environment=${{ steps.prcomm_train.outputs.TRAILING_TOKEN}} --pipeline-package-path=pipeline.yaml --pipeline-version=${{ steps.prcomm_train.outputs.SHA }} > tmp_run_id.txt
+          python3 ./github_actions/deploy_pipeline.py --cloud-environment=${{ steps.prcomm_train.outputs.TRAILING_TOKEN}} --pipeline-package-path=pipeline.yaml --pipeline-version=${{ steps.prcomm_train.outputs.SHA }} --output-file=tmp_run_id.txt
       - id: output_run_id
         run: echo "run_id=`cat tmp_run_id.txt`" >> $GITHUB_OUTPUT
   # nortify result of building/uploading/running pipeline as a PR comment
@@ -108,23 +108,23 @@ jobs:
       - name: wait for pipeline run
         id: run_waiter
         run: | 
-          python3 ./github_actions/wait_run_completion.py --cloud-environment=${{ needs.initiate-model-training.outputs.deploy_env }} --run-id=${{ needs.initiate-model-training.outputs.run_id }} > tmp_run_status.txt
+          python3 ./github_actions/wait_run_completion.py --cloud-environment=${{ needs.initiate-model-training.outputs.deploy_env }} --run-id=${{ needs.initiate-model-training.outputs.run_id }} --output-file=tmp_run_status.txt
       - id: output_run_status
         run: echo "run_status=`cat tmp_run_status.txt`" >> $GITHUB_OUTPUT
   # nortify result of pipeline RUN as a PR comment
   # also in case of "succeeded", get artifact uri that is uploaded into the artifact repository
   wait-for-run-completion-result:
     runs-on: self-hosted
-    if: ${{ always() }}
+    # if: ${{ always() }}
     needs:
-      - initiate-model-training
+      # - initiate-model-training
       - wait-for-run-completion
     steps:
       # in case of run succeedes
       - name: read artifact of run
         if: needs.wait-for-run-completion.outputs.run_status == 'Succeeded'
         run: |
-          python3 ./github_actions/read_pipeline_output.py --cloud-environment=${{ needs.initiate-model-training.outputs.deploy_env }} --run-id=${{ needs.initiate-model-training.outputs.run_id }} --component-name=upload-savedmodel --artifact-name=upload-savedmodel-Output > tmp_model_uri.txt
+          python3 ./github_actions/read_pipeline_output.py --cloud-environment=${{ needs.initiate-model-training.outputs.deploy_env }} --run-id=${{ needs.initiate-model-training.outputs.run_id }} --component-name=upload-savedmodel --artifact-name=upload-savedmodel-Output --output-file=tmp_model_uri.txt
       # gets artifact uri and stores it as repository env to deploy model
       - id: output_model_uri
         if: needs.wait-for-run-completion.outputs.run_status == 'Succeeded'

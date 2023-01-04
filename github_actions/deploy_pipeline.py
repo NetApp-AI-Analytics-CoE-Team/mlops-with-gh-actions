@@ -36,7 +36,7 @@ def deploy_pipeline(
                 description=pipeline_desc
                 )
             # print('new pipeline has been successfully uploaded')
-            # print(pipeline_info)
+            print(pipeline_info)
         except Exception as e:
             print(e)
             return None
@@ -48,7 +48,7 @@ def deploy_pipeline(
             pipeline_version_name=pipeline_version_name,
             description=pipeline_desc
         )
-        # print(pipeline_version_info)
+        print(pipeline_version_info)
         return(pipeline_version_info)
 
     except Exception as e:
@@ -86,7 +86,7 @@ def run_pipeline(
             job_name=job_name,
             params=params
         )
-        # print(run_info)
+        print(run_info)
         return run_info
 
     except Exception as e:
@@ -101,6 +101,7 @@ if __name__ == "__main__":
     parser.add_argument('-f', '--pipeline-package-path', help="pipeline package path", required=True)
     parser.add_argument('-v', '--pipeline-version', help="pipeline version name", required=True)
     parser.add_argument('-d', '--deploy-only', action='store_true', help="specify if you don't want to run pipeline")
+    parser.add_argument('-o', '--output-file', help="specify file path if you want to store output into a file")
     args = parser.parse_args()
 
     # deploy pipeline
@@ -114,7 +115,6 @@ if __name__ == "__main__":
             
     # run pipeline
     if args.deploy_only:
-        # sys.stdout.write(pipeline_version_info)
         sys.exit(0)
     else:
         # read params file
@@ -132,6 +132,9 @@ if __name__ == "__main__":
         if run_info == None:
             sys.exit(1)
     
-        # os.environ['RUN_ID'] = run_info.id
-        sys.stdout.write(run_info.id)
+        # for github actions
+        if args.output_file:
+            with open(args.output_file, mode='w') as f:
+                f.write(run_info.id)
+        
         sys.exit(0)

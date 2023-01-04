@@ -51,6 +51,7 @@ if __name__ == "__main__":
     parser.add_argument('-r', '--run-id', help="Run ID you want to check status", required=True)
     parser.add_argument('-n', '--component-name', help="component name", required=True)
     parser.add_argument('-a', '--artifact-name', help="artifact name", required=True)
+    parser.add_argument('-o', '--output-file', help="specify file path if you want to store output into a file")
     args = parser.parse_args()
 
     # get kfp client connection
@@ -62,7 +63,11 @@ if __name__ == "__main__":
     artifact = get_artifact(
         run_id=args.run_id, node_id=node_id, artifact_name=args.artifact_name, client=kfp_client,
     )
-    # sys.stdout.write(artifact)
     print(artifact)
-    os.environ['MODEL_URI'] = artifact
+
+    # for github actions
+    if args.output_file:
+        with open(args.output_file, mode='w') as f:
+            f.write(artifact)
+
     sys.exit(0)
