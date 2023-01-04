@@ -168,7 +168,7 @@ jobs:
           message="## :pushpin: Actions Result - Result of ML Pipeline Run"
           message+="${lf}:white_check_mark: Successfully launched the pipeline for SHA: \`${{ needs.initiate-model-training-run.outputs.commit_sha }}\`"
           message+="${lf}## :brain: Model information"
-          message+="${lf}Artifact URI: ${{ steps.output_run_status.outputs.run_status }}""
+          message+="${lf}Artifact URI: ${{ steps.output_model_uri.outputs.model_uri }}"
           message+="${lf}## :mag: How to reproduce the model"
           message+="${lf}To reproduce this model, perform following tasks"
           message+="${lf}1. Login to workstation which can access to k8s API"
