@@ -104,12 +104,12 @@ jobs:
           export RUN_STATUS=`python3 ./github_actions/wait_run_completion.py --cloud-environment=${{ needs.train-model.outputs.deploy_env }} --run-id=${{ needs.train-model.outputs.run_id }}`
           echo "run_status=$RUN_STATUS" >> $GITHUB_OUTPUT
       - name: read artifact of run
-        if: steps.run_waiter.outputs.run_status == "Succeeded"
+        if: steps.run_waiter.outputs.run_status == 'Succeeded'
         run: |
           export MODEL_URI=`python3 ./github_actions/read_pipeline_output.py --cloud-environment=${{ needs.train-model.outputs.deploy_env }} --run-id=${{ needs.train-model.outputs.run_id }} --component-name=upload-savedmodel --artifact-name=upload-savedmodel-Output`
           echo "model_uri=$MODEL_URI" >> $GITHUB_OUTPUT
       - name: commenting on PR (Succeeded) 
-        if: steps.run_waiter.outputs.run_status == "Succeeded"
+        if: steps.run_waiter.outputs.run_status == 'Succeeded'
         uses: actions/github-script@v6
         with:
           script: |
@@ -122,7 +122,7 @@ jobs:
                 Artifact of run is uploaded into artifact repository`
             })
       - name: commenting on PR (Failed) 
-        if: steps.run_waiter.outputs.run_status == "Failed"
+        if: steps.run_waiter.outputs.run_status == 'Failed'
         uses: actions/github-script@v6
         with:
           script: |
@@ -135,7 +135,7 @@ jobs:
                 Access to the Kubeflow UI and check details of run`
             })
       - name: commenting on PR (timeout) 
-        if: steps.run_waiter.outputs.run_status == "TimeoutError"
+        if: steps.run_waiter.outputs.run_status == 'TimeoutError'
         uses: actions/github-script@v6
         with:
           script: |
