@@ -84,7 +84,7 @@ jobs:
               owner: context.repo.owner,
               repo: context.repo.repo,
               body: `
-                # ❌Failed to launch the pipeline for SHA:```${{ needs.train-model.outputs.commit_sha }}```
+                # ❌Failed to launch the pipeline for SHA
                 Check Actions tab to find the error cause.`
             })
   wait-run-completion:

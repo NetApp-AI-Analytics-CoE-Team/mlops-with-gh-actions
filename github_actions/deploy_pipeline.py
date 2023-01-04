@@ -118,4 +118,5 @@ if __name__ == "__main__":
             params=pipeline_params_content
         )
     
-        sys.stdout.write(run_info.run.id)
+        print(run_info)
+        sys.stdout.write(run_info.id)
