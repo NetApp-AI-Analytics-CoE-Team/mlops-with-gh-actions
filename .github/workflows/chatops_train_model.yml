@@ -67,7 +67,7 @@ jobs:
               body: `# 🚀 Successfully launched the pipeline for SHA: **${{ needs.initiate-model-training-run.outputs.commit_sha }}**
                 
                 RUN ID: \\\`\\\`\\\`${{ needs.initiate-model-training-run.outputs.run_id }}\\\`\\\`\\\`
-                I will nortify when the RUN is completed, or you can check detailed status on the [Kubeflow UI](${{ needs.initiate-model-training-run.outputs.kubeflow_url }}).`
+                I will nortify when the RUN is completed, or you can check detailed status on the ![Kubeflow UI](${{ needs.initiate-model-training-run.outputs.kubeflow_url }}).`
             })
       # in case of failed
       - name: commenting on PR (failure) 
@@ -81,7 +81,7 @@ jobs:
               repo: context.repo.repo,
               body: `# ❌ Failed to launch the pipeline for SHA: **${{ needs.initiate-model-training-run.outputs.commit_sha }}**
 
-                Check Actions tab and [Kubeflow UI](${{ needs.initiate-model-training-run.kubeflow_ui }}) to find the error cause.`
+                Check Actions tab and ![Kubeflow UI](${{ needs.initiate-model-training-run.kubeflow_ui }}) to find the error cause.`
             })
   # wait for completion of pipline RUN that is initiated previous job
   # default timeout is 5 hours
@@ -135,7 +135,7 @@ jobs:
                 Artifact of RUN is uploaded into your artifact repository.
                 URI: ${{ steps.output_run_status.outputs.run_status }}
                 
-                Also you can check detailed status of RUN in the [Kubeflow UI](${{ needs.initiate-model-training-run.outputs.kubeflow_url }})`
+                Also you can check detailed status of RUN in the ![Kubeflow UI](${{ needs.initiate-model-training-run.outputs.kubeflow_url }})`
             })
       - name: applying label (Succeeded)
         if: needs.wait-for-run-completion.outputs.run_status == 'Succeeded'
@@ -160,7 +160,7 @@ jobs:
               repo: context.repo.repo,
               body: `# ❌ RUN ID: **${{ needs.initiate-model-training-run.outputs.run_id }}** has been completed with failure status
 
-                Access to the [Kubeflow UI](${{ needs.initiate-model-training-run.outputs.kubeflow_url }}) and check details of RUN to find error cause.`
+                Access to the ![Kubeflow UI](${{ needs.initiate-model-training-run.outputs.kubeflow_url }}) and check details of RUN to find error cause.`
             })
       - name: applying label (Failed)
         if: needs.wait-for-run-completion.outputs.run_status == 'Failed'
@@ -185,7 +185,7 @@ jobs:
               repo: context.repo.repo,
               body: `# 🕛 RUN ID: **${{ needs.initiate-model-training-run.outputs.run_id }}** has exceeded timeout and NOT been completed yet
                 
-                Access to the [Kubeflow UI](${{ needs.initiate-model-training-run.outputs.kubeflow_url }}) and check the latest status of RUN.`
+                Access to the ![Kubeflow UI](${{ needs.initiate-model-training-run.outputs.kubeflow_url }}) and check the latest status of RUN.`
             })
       - name: applying label (timeout)
         if: steps.run_waiter.outputs.run_status == 'TimeoutError'
