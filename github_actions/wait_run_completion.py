@@ -8,8 +8,6 @@ import sys
 def run_waiter(
     deploy_environment:str,
     run_id: str,
-    # check_interval_sec:int=60,
-    # retry_count:int=60,
     timeout_seconds:int=18000 # 5 hours
     ):
 

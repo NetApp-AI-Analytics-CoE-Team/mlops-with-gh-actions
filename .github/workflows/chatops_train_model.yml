@@ -7,7 +7,7 @@ jobs:
     outputs: 
       deploy_env: ${{ steps.output_deploy_env.outputs.deploy_env }}
       commit_sha: ${{ steps.output_sha.outputs.sha }}
-      run_id: ${{ steps.train_launcher.outputs.run_id }}
+      run_id: ${{ steps.output_run_id.outputs.run_id }}
     steps:
       - name: listen for PR Comments (train)
         id: prcomm_train
@@ -16,7 +16,7 @@ jobs:
           APP_PEM: ${{ secrets.APP_PEM }}
           APP_ID: ${{ secrets.APP_ID }}
           TRIGGER_PHRASE: "/train-model"
-          INDICATOR_LABEL: "model-training-triggered"
+          INDICATOR_LABEL: "chatops-model-training"
         env: # you must supply GITHUB_TOKEN
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       # output variables for following jobs
@@ -40,9 +40,9 @@ jobs:
         id: train_launcher
         if: steps.prcomm_train.outputs.BOOL_TRIGGERED == 'true'
         run: |
-          python3 ./github_actions/deploy_pipeline.py --cloud-environment=${{ steps.prcomm_train.outputs.TRAILING_TOKEN}} --pipeline-package-path=pipeline.yaml --pipeline-version=${{ steps.prcomm_train.outputs.SHA }}
-          echo "run_id=$RUN_ID" >> $GITHUB_OUTPUT
-        # continue-on-error: true
+          python3 ./github_actions/deploy_pipeline.py --cloud-environment=${{ steps.prcomm_train.outputs.TRAILING_TOKEN}} --pipeline-package-path=pipeline.yaml --pipeline-version=${{ steps.prcomm_train.outputs.SHA }} > tmp_run_id.txt
+      - id: output_run_id
+        run: echo "run_id=`cat tmp_run_id.txt`" >> $GITHUB_OUTPUT
   train-model-messenger:
     runs-on: self-hosted
     if: ${{ always() }}
@@ -58,9 +58,9 @@ jobs:
               issue_number: context.issue.number,
               owner: context.repo.owner,
               repo: context.repo.repo,
-              body: `
-                # 🚀Successfully launched the pipeline for SHA:```${{ needs.train-model.outputs.commit_sha }}```
-                Check the status of RUN ID: on your Kubeflow UI.`
+              body: `# 🚀 Successfully launched the pipeline for SHA: ```${{ needs.train-model.outputs.commit_sha }}```
+                
+                Check the status of RUN ID: ```${{ needs.train-model.outputs.run_id }}``` on the Kubeflow UI.`
             })
       - name: applying label
         if: ${{ needs.train-model.result == 'success' }}
@@ -71,7 +71,7 @@ jobs:
               issue_number: context.issue.number,
               owner: context.repo.owner,
               repo: context.repo.repo,
-              labels: ["model-training-initiated"]
+              labels: ["training-run-created"]
             })
       # error message
       - name: commenting on PR (failure) 
@@ -83,7 +83,7 @@ jobs:
               issue_number: context.issue.number,
               owner: context.repo.owner,
               repo: context.repo.repo,
-              body: `# ❌Failed to launch the pipeline for SHA
+              body: `# ❌ Failed to launch the pipeline for SHA:```${{ needs.train-model.outputs.commit_sha }}```
 
                 Check Actions tab to find the error cause.`
             })
@@ -91,8 +91,8 @@ jobs:
     runs-on: self-hosted
     needs: train-model
     outputs: 
-      model_uri: 
-      run_status:
+      model_uri: ${{ steps.output_run_status.outputs.run_status }}
+      run_status: ${{ steps.output_model_uri.outputs.model_uri }}
     steps:
       - name: clone branch of PR
         uses: actions/checkout@master
@@ -101,13 +101,15 @@ jobs:
       - name: wait for pipeline run
         id: run_waiter
         run: | 
-          python3 ./github_actions/wait_run_completion.py --cloud-environment=${{ needs.train-model.outputs.deploy_env }} --run-id=${{ needs.train-model.outputs.run_id }}
-          echo "run_status=$RUN_STATUS" >> $GITHUB_OUTPUT
+          python3 ./github_actions/wait_run_completion.py --cloud-environment=${{ needs.train-model.outputs.deploy_env }} --run-id=${{ needs.train-model.outputs.run_id }} > tmp_run_status.txt
+      - id: output_run_status
+        run: echo "run_status=`cat tmp_run_status.txt`" >> $GITHUB_OUTPUT
       - name: read artifact of run
         if: steps.run_waiter.outputs.run_status == 'Succeeded'
         run: |
-          python3 ./github_actions/read_pipeline_output.py --cloud-environment=${{ needs.train-model.outputs.deploy_env }} --run-id=${{ needs.train-model.outputs.run_id }} --component-name=upload-savedmodel --artifact-name=upload-savedmodel-Output
-          echo "model_uri=$MODEL_URI" >> $GITHUB_OUTPUT
+          python3 ./github_actions/read_pipeline_output.py --cloud-environment=${{ needs.train-model.outputs.deploy_env }} --run-id=${{ needs.train-model.outputs.run_id }} --component-name=upload-savedmodel --artifact-name=upload-savedmodel-Output > tmp_model_uri.txt
+      - id: output_model_uri
+        run: echo "model_uri=`cat tmp_model_uri.txt`" >> $GITHUB_OUTPUT
       - name: commenting on PR (Succeeded) 
         if: steps.run_waiter.outputs.run_status == 'Succeeded'
         uses: actions/github-script@v6
@@ -117,9 +119,20 @@ jobs:
               issue_number: context.issue.number,
               owner: context.repo.owner,
               repo: context.repo.repo,
-              body: `
-                # Run: has been successfully completed
-                Artifact of run is uploaded into artifact repository`
+              body: `# ✅ RUN ID: ```${{ needs.train-model.outputs.run_id }}``` has been successfully completed
+                
+                Artifact of RUN is uploaded into your artifact repository`
+            })
+      - name: applying label (Succeeded)
+        if: steps.run_waiter.outputs.run_status == 'Succeeded'
+        uses: actions/github-script@v6
+        with:
+          script: |
+            github.rest.issues.addLabels({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              labels: ["training-run-succeeded"]
             })
       - name: commenting on PR (Failed) 
         if: steps.run_waiter.outputs.run_status == 'Failed'
@@ -130,9 +143,20 @@ jobs:
               issue_number: context.issue.number,
               owner: context.repo.owner,
               repo: context.repo.repo,
-              body: `
-                # Run: has been completed with failure
-                Access to the Kubeflow UI and check details of run`
+              body: `# ❌ RUN ID: ```${{ needs.train-model.outputs.run_id }}``` has been completed with failure status
+
+                Access to the Kubeflow UI and check details of RUN`
+            })
+      - name: applying label (Failed)
+        if: steps.run_waiter.outputs.run_status == 'Failed'
+        uses: actions/github-script@v6
+        with:
+          script: |
+            github.rest.issues.addLabels({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              labels: ["training-run-failed"]
             })
       - name: commenting on PR (timeout) 
         if: steps.run_waiter.outputs.run_status == 'TimeoutError'
@@ -143,7 +167,18 @@ jobs:
               issue_number: context.issue.number,
               owner: context.repo.owner,
               repo: context.repo.repo,
-              body: `
-                # Run: has exceeded timeout and NOT been completed yet
+              body: `# 🕛 RUN ID: ```${{ needs.train-model.outputs.run_id }}``` has exceeded timeout and NOT been completed yet
+                
                 Access to the Kubeflow UI and check status of RUN yourself`
+            })
+      - name: applying label (timeout)
+        if: steps.run_waiter.outputs.run_status == 'TimeoutError'
+        uses: actions/github-script@v6
+        with:
+          script: |
+            github.rest.issues.addLabels({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              labels: ["training-run-unknown-status"]
             })
