@@ -192,7 +192,7 @@ jobs:
           message+="${lf}5. Resotre the source code and hyper parameters from GitHub commit"
           message+="${lf}\`\`\`bash"
           message+="${lf}# Open a terminal in Jupyter Workspace and execute below commandline"
-          message+="${lf}$ git clone ${{ context.repo.repo }} ."
+          message+="${lf}$ git clone ${{ github.repository }} ."
           message+="${lf}$ git reset -hard ${{ needs.initiate-model-training-run.outputs.commit_sha }}"
           message+="${lf}\`\`\`"
           echo "message=${message}" >> $GITHUB_OUTPUT
