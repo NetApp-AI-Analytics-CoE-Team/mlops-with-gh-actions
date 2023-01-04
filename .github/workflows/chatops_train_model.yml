@@ -66,6 +66,7 @@ jobs:
               repo: context.repo.repo,
               body: `# 🚀 Successfully launched the pipeline for SHA: **${{ needs.initiate-model-training-run.outputs.commit_sha }}**
                 
+                # test
                 RUN ID: \\\`\\\`\\\`${{ needs.initiate-model-training-run.outputs.run_id }}\\\`\\\`\\\`
                 I will nortify when the RUN is completed, or you can check detailed status on the ![Kubeflow UI](${{ needs.initiate-model-training-run.outputs.kubeflow_url }}).`
             })
@@ -81,6 +82,7 @@ jobs:
               repo: context.repo.repo,
               body: `# ❌ Failed to launch the pipeline for SHA: **${{ needs.initiate-model-training-run.outputs.commit_sha }}**
 
+                # test
                 Check Actions tab and ![Kubeflow UI](${{ needs.initiate-model-training-run.kubeflow_ui }}) to find the error cause.`
             })
   # wait for completion of pipline RUN that is initiated previous job
