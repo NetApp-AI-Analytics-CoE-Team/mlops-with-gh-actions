@@ -83,11 +83,11 @@ jobs:
               issue_number: context.issue.number,
               owner: context.repo.owner,
               repo: context.repo.repo,
-              body: `
-                # ❌Failed to launch the pipeline for SHA
+              body: `# ❌Failed to launch the pipeline for SHA
+
                 Check Actions tab to find the error cause.`
             })
-  wait-run-completion:
+  wait-for-run-completion:
     runs-on: self-hosted
     needs: train-model
     outputs: 

@@ -29,26 +29,31 @@ def deploy_pipeline(
 
     # upload package as a new pipeline if specified pipeline already exists
     if pipeline_id == None:
-        pipeline_info = kfp_client.upload_pipeline(
+        try:
+            pipeline_info = kfp_client.upload_pipeline(
+                pipeline_package_path=pipeline_yaml_path,
+                pipeline_name=pipeline_name,
+                description=pipeline_desc
+                )
+            # print('new pipeline has been successfully uploaded')
+            print(pipeline_info)
+        except Exception as e:
+            print(e)
+            return None
+
+    try:
+        pipeline_version_info = kfp_client.upload_pipeline_version(
             pipeline_package_path=pipeline_yaml_path,
             pipeline_name=pipeline_name,
+            pipeline_version_name=pipeline_version_name,
             description=pipeline_desc
-            )
+        )
+        print(pipeline_version_info)
+        return(pipeline_version_info)
 
-        # print('new pipeline has been successfully uploaded')
-        print(pipeline_info)
-
-    pipeline_version_info = kfp_client.upload_pipeline_version(
-        pipeline_package_path=pipeline_yaml_path,
-        pipeline_name=pipeline_name,
-        pipeline_version_name=pipeline_version_name,
-        description=pipeline_desc
-    )
-
-    # print('pipeline version has been successfully uploaded')
-    print(pipeline_version_info)
-
-    return(pipeline_version_info)
+    except Exception as e:
+        print(e)
+        return None
 
 # create run of pipeline
 def run_pipeline(
@@ -74,16 +79,20 @@ def run_pipeline(
     job_name = "Run at " + str(now)
 
     # create run
-    run_info = kfp_client.run_pipeline(
-        experiment_id=experiment_info.id,
-        version_id=pipeline_version_id,
-        job_name=job_name,
-        params=params
-    )
-    # print('successfully launched the pipeline run')
-    print(run_info)
+    try:
+        run_info = kfp_client.run_pipeline(
+            experiment_id=experiment_info.id,
+            version_id=pipeline_version_id,
+            job_name=job_name,
+            params=params
+        )
+        print(run_info)
+        return run_info
 
-    return run_info
+    except Exception as e:
+        print(e)
+        return None
+
 
 if __name__ == "__main__":
     # define command line arguments 
@@ -100,6 +109,8 @@ if __name__ == "__main__":
         pipeline_yaml_path=args.pipeline_package_path,
         pipeline_version_name=args.pipeline_version
         )
+    if pipeline_version_info = None:
+        sys.exit(1)
             
     # run pipeline
     if args.deploy_only:
@@ -117,6 +128,9 @@ if __name__ == "__main__":
             pipeline_version_id=pipeline_version_info.id,
             params=pipeline_params_content
         )
+        if run_info = None:
+            sys.exit(1)
     
         print(run_info)
         sys.stdout.write(run_info.id)
+        sys.exit(0)
