@@ -55,6 +55,31 @@ jobs:
     needs: initiate-model-training-run
     steps:
       # in case of succeeded
+      - name: setup comment message (success)
+        id: success_comment
+        run: |
+          base_ref="${{ github.event.pull_request.base.ref }}"
+          head_sha="${{ github.event.pull_request.head.sha }}"
+          lf='\n'
+          message="## :pushpin: Actions Result - Deploy and Run ML pipeline"
+          message+="${lf}:rocket: Successfully launched the pipeline for SHA: \`${{ needs.initiate-model-training-run.outputs.commit_sha }}\`"
+          message+="## :pushpin: Run information"
+          message+="${lf}Kubeflow Endpoint: ${{ needs.initiate-model-training-run.outputs.kubeflow_url }}"          
+          message+="${lf}RUN ID: ${{ needs.initiate-model-training-run.outputs.run_id }}"
+          echo "message=${message}" >> $GITHUB_OUTPUT
+      # in case of failed
+      - name: setup comment message (success)
+        id: success_comment
+        run: |
+          base_ref="${{ github.event.pull_request.base.ref }}"
+          head_sha="${{ github.event.pull_request.head.sha }}"
+          lf='\n'
+          message="## :pushpin: Actions Result - Deploy and Run ML pipeline"
+          message+="${lf}:x: Failed to launch the pipeline for SHA: \`${{ needs.initiate-model-training-run.outputs.commit_sha }}\`"
+          message+="${lf}Check Actions tab and Kubeflow UI to find the error cause."          
+          message+="${lf}RUN ID: ${{ needs.initiate-model-training-run.outputs.run_id }}"
+          echo "message=${message}" >> $GITHUB_OUTPUT
+      # post PR comment
       - name: commenting on PR (success) 
         if: ${{ needs.initiate-model-training-run.result == 'success' }}
         uses: actions/github-script@v6
@@ -64,27 +89,7 @@ jobs:
               issue_number: context.issue.number,
               owner: context.repo.owner,
               repo: context.repo.repo,
-              body: `# 🚀 Successfully launched the pipeline for SHA: **${{ needs.initiate-model-training-run.outputs.commit_sha }}**
-                
-                  # test
-                  RUN ID: \\\`\\\`\\\`${{ needs.initiate-model-training-run.outputs.run_id }}\\\`\\\`\\\`
-                  I will nortify when the RUN is completed, or you can check detailed status on the ![Kubeflow UI](${{ needs.initiate-model-training-run.outputs.kubeflow_url }}).`
-            })
-      # in case of failed
-      - name: commenting on PR (failure) 
-        if: ${{ needs.initiate-model-training-run.result == 'failure' }}
-        uses: actions/github-script@v6
-        with:
-          script: |
-            github.rest.issues.createComment({
-              issue_number: context.issue.number,
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              body: `# ❌ Failed to launch the pipeline for SHA: **${{ needs.initiate-model-training-run.outputs.commit_sha }}**
-
-                  # test
-                  Check Actions tab and ![Kubeflow UI](${{ needs.initiate-model-training-run.kubeflow_ui }}) to find the error cause.`
-            })
+              body: '${{ steps.success_comment.outputs.message }}'
   # wait for completion of pipline RUN that is initiated previous job
   # default timeout is 5 hours
   wait-for-run-completion:
