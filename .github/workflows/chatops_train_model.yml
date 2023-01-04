@@ -170,7 +170,7 @@ jobs:
           message+="${lf}## :brain: Model information"
           message+="${lf}Model package is stored in the artifact repository."
           message+="<br />"
-          message+="${lf}Artifact URI: ${{ steps.output_run_status.outputs.run_status }}""
+          message+="${lf}Artifact URI: ${{ steps.output_model_uri.outputs.model_uri }}"
           message+="${lf}## :mag: How to reproduce the model"
           message+="${lf}To reproduce this model, you can create a Jupyter Workspace which contains source code, hyper parameters, and dataset version by performing following tasks"
           message+="${lf}1. Login to workstation which can access to k8s API"
