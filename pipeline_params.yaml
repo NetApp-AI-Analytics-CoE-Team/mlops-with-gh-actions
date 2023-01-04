@@ -1,2 +1,9 @@
-key1: 4
-key2: 5
+dataset_pvc_name: dataset-flower
+kubeflow_user_namespace: kubeflow-user-example-com
+volume_snapshot_class: csi-snapclass
+batch_size: 16
+epochs: 5
+learning_rate: 0.005
+momentum: 0.9
+label_smoothing: 0.1
+dropout_rate: 0.2
