@@ -36,7 +36,7 @@ def deploy_pipeline(
                 description=pipeline_desc
                 )
             # print('new pipeline has been successfully uploaded')
-            print(pipeline_info)
+            # print(pipeline_info)
         except Exception as e:
             print(e)
             return None
@@ -48,7 +48,7 @@ def deploy_pipeline(
             pipeline_version_name=pipeline_version_name,
             description=pipeline_desc
         )
-        print(pipeline_version_info)
+        # print(pipeline_version_info)
         return(pipeline_version_info)
 
     except Exception as e:
@@ -86,7 +86,7 @@ def run_pipeline(
             job_name=job_name,
             params=params
         )
-        print(run_info)
+        # print(run_info)
         return run_info
 
     except Exception as e:
@@ -132,6 +132,6 @@ if __name__ == "__main__":
         if run_info == None:
             sys.exit(1)
     
-        os.environ['RUN_ID'] = run_info.id
-        # sys.stdout.write(run_info.id)
+        # os.environ['RUN_ID'] = run_info.id
+        sys.stdout.write(run_info.id)
         sys.exit(0)
