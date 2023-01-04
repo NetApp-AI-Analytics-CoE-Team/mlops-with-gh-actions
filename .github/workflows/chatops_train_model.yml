@@ -2,7 +2,7 @@ name: ChatOps for training AI/ML model
 on: [issue_comment]
 
 jobs:
-  train-model:
+  initiate-model-training:
     runs-on: self-hosted
     outputs: 
       deploy_env: ${{ steps.output_deploy_env.outputs.deploy_env }}
@@ -43,7 +43,7 @@ jobs:
           python3 ./github_actions/deploy_pipeline.py --cloud-environment=${{ steps.prcomm_train.outputs.TRAILING_TOKEN}} --pipeline-package-path=pipeline.yaml --pipeline-version=${{ steps.prcomm_train.outputs.SHA }} > tmp_run_id.txt
       - id: output_run_id
         run: echo "run_id=`cat tmp_run_id.txt`" >> $GITHUB_OUTPUT
-  train-model-messenger:
+  initiate-model-training-result:
     runs-on: self-hosted
     if: ${{ always() }}
     needs: train-model
@@ -60,7 +60,7 @@ jobs:
               repo: context.repo.repo,
               body: `# 🚀 Successfully launched the pipeline for SHA: **${{ needs.train-model.outputs.commit_sha }}**
                 
-                Check the status of RUN ID: ```${{ needs.train-model.outputs.run_id }}``` on the Kubeflow UI.`
+                Check the status of RUN ID: **${{ needs.train-model.outputs.run_id }}** on the Kubeflow UI.`
             })
       - name: applying label
         if: ${{ needs.train-model.result == 'success' }}
@@ -110,8 +110,15 @@ jobs:
           python3 ./github_actions/read_pipeline_output.py --cloud-environment=${{ needs.train-model.outputs.deploy_env }} --run-id=${{ needs.train-model.outputs.run_id }} --component-name=upload-savedmodel --artifact-name=upload-savedmodel-Output > tmp_model_uri.txt
       - id: output_model_uri
         run: echo "model_uri=`cat tmp_model_uri.txt`" >> $GITHUB_OUTPUT
+  wait-for-run-completion-result:
+    runs-on: self-hosted
+    if: ${{ always() }}
+    needs:
+      - train-model
+      - wait-for-run-completion
+    steps:        
       - name: commenting on PR (Succeeded) 
-        if: steps.run_waiter.outputs.run_status == 'Succeeded'
+        if: needs.wait-for-run-completion.outputs.run_status == 'Succeeded'
         uses: actions/github-script@v6
         with:
           script: |
@@ -119,12 +126,12 @@ jobs:
               issue_number: context.issue.number,
               owner: context.repo.owner,
               repo: context.repo.repo,
-              body: `# ✅ RUN ID: ```${{ needs.train-model.outputs.run_id }}``` has been successfully completed
+              body: `# ✅ RUN ID: **${{ needs.train-model.outputs.run_id }}** has been successfully completed
                 
                 Artifact of RUN is uploaded into your artifact repository`
             })
       - name: applying label (Succeeded)
-        if: steps.run_waiter.outputs.run_status == 'Succeeded'
+        if: needs.wait-for-run-completion.outputs.run_status == 'Succeeded'
         uses: actions/github-script@v6
         with:
           script: |
@@ -135,7 +142,7 @@ jobs:
               labels: ["training-run-succeeded"]
             })
       - name: commenting on PR (Failed) 
-        if: steps.run_waiter.outputs.run_status == 'Failed'
+        if: needs.wait-for-run-completion.outputs.run_status == 'Failed'
         uses: actions/github-script@v6
         with:
           script: |
@@ -143,12 +150,12 @@ jobs:
               issue_number: context.issue.number,
               owner: context.repo.owner,
               repo: context.repo.repo,
-              body: `# ❌ RUN ID: ```${{ needs.train-model.outputs.run_id }}``` has been completed with failure status
+              body: `# ❌ RUN ID: **${{ needs.train-model.outputs.run_id }}** has been completed with failure status
 
                 Access to the Kubeflow UI and check details of RUN`
             })
       - name: applying label (Failed)
-        if: steps.run_waiter.outputs.run_status == 'Failed'
+        if: needs.wait-for-run-completion.outputs.run_status == 'Failed'
         uses: actions/github-script@v6
         with:
           script: |
@@ -159,7 +166,7 @@ jobs:
               labels: ["training-run-failed"]
             })
       - name: commenting on PR (timeout) 
-        if: steps.run_waiter.outputs.run_status == 'TimeoutError'
+        if: needs.wait-for-run-completion.outputs.run_status == 'TimeoutError'
         uses: actions/github-script@v6
         with:
           script: |
@@ -167,7 +174,7 @@ jobs:
               issue_number: context.issue.number,
               owner: context.repo.owner,
               repo: context.repo.repo,
-              body: `# 🕛 RUN ID: ```${{ needs.train-model.outputs.run_id }}``` has exceeded timeout and NOT been completed yet
+              body: `# 🕛 RUN ID: **${{ needs.train-model.outputs.run_id }}** has exceeded timeout and NOT been completed yet
                 
                 Access to the Kubeflow UI and check status of RUN yourself`
             })

@@ -35,6 +35,6 @@ if __name__ == "__main__":
         run_id=args.run_id,
         # timeout_seconds=args.timeout_seconds
     )
-    print(f"Status: {run_result}") 
-    os.environ['RUN_STATUS'] = run_result
+    
+    sys.stdout.write(run_result)
     sys.exit(0)
