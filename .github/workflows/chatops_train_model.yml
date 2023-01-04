@@ -5,7 +5,9 @@ jobs:
   train-model:
     runs-on: self-hosted
     outputs: 
+      deploy_env: ${{ steps.output_deploy_env.outputs.deploy_env }}
       commit_sha: ${{ steps.output_sha.outputs.sha }}
+      run_id: ${{ steps.train_launcher.outputs.run_id }}
     steps:
       - name: listen for PR Comments (train)
         id: prcomm_train
@@ -17,9 +19,13 @@ jobs:
           INDICATOR_LABEL: "model-training-triggered"
         env: # you must supply GITHUB_TOKEN
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      # This step clones the branch of the PR associated with the triggering phrase, but only if it is triggered.
+      # output variables for following jobs
+      - id: output_deploy_env
+        run: echo "deploy_env=${{ steps.prcomm_train.outputs.TRAILING_TOKEN }}" >> $GITHUB_OUTPUT
       - id: output_sha
-        run: echo "::set-output name=sha::${{ steps.prcomm_train.outputs.SHA }}"
+        # run: echo "::set-output name=sha::${{ steps.prcomm_train.outputs.SHA }}"
+        run: echo "sha=${{ steps.prcomm_train.outputs.SHA }}" >> $GITHUB_OUTPUT
+      # This step clones the branch of the PR associated with the triggering phrase, but only if it is triggered.
       - name: clone branch of PR
         if: steps.prcomm_train.outputs.BOOL_TRIGGERED == 'true'
         uses: actions/checkout@master
@@ -28,14 +34,16 @@ jobs:
       # expects pipeline function is declared in "./pipline.py"
       - name: build pipeline
         if: steps.prcomm_train.outputs.BOOL_TRIGGERED == 'true'
-        run: python3 ./pipeline.py
+        run: python3 ./pipeline.py ./pipeline.yaml
       # expects pipeline package is located in "./pipline.yaml"
       - name: deploy and run pipeline
         id: train_launcher
         if: steps.prcomm_train.outputs.BOOL_TRIGGERED == 'true'
-        run: python3 ./github_actions/deploy_pipeline.py --cloud-environment=${{ steps.prcomm_train.outputs.TRAILING_TOKEN}} --pipeline-package-path=pipeline.yaml --pipeline-version=${{ steps.prcomm_train.outputs.SHA }}
+        run: |
+          export RUN_ID=`python3 ./github_actions/deploy_pipeline.py --cloud-environment=${{ steps.prcomm_train.outputs.TRAILING_TOKEN}} --pipeline-package-path=pipeline.yaml --pipeline-version=${{ steps.prcomm_train.outputs.SHA }}`
+          echo "run_id=$RUN_ID" >> $GITHUB_OUTPUT
         # continue-on-error: true
-  messaging:
+  train-model-messenger:
     runs-on: self-hosted
     if: ${{ always() }}
     needs: train-model
@@ -50,7 +58,9 @@ jobs:
               issue_number: context.issue.number,
               owner: context.repo.owner,
               repo: context.repo.repo,
-              body: '🚀Successfully launched the pipeline for SHA:```${{ needs.train-model.outputs.commit_sha }}```. Check the status of RUN ID: on your Kubeflow UI.'
+              body: `
+                # 🚀Successfully launched the pipeline for SHA:```${{ needs.train-model.outputs.commit_sha }}```
+                Check the status of RUN ID: on your Kubeflow UI.`
             })
       - name: applying label
         if: ${{ needs.train-model.result == 'success' }}
@@ -73,5 +83,67 @@ jobs:
               issue_number: context.issue.number,
               owner: context.repo.owner,
               repo: context.repo.repo,
-              body: '❌Failed to launch the pipeline for SHA:```${{ needs.train-model.outputs.commit_sha }}```. Check Actions tab to find the error cause.'
+              body: `
+                # ❌Failed to launch the pipeline for SHA:```${{ needs.train-model.outputs.commit_sha }}```
+                Check Actions tab to find the error cause.`
+            })
+  wait-run-completion:
+    runs-on: self-hosted
+    needs: train-model
+    output: 
+      model_uri: 
+      run_status:
+    steps:
+      - name: clone branch of PR
+        uses: actions/checkout@master
+        with:
+          ref: ${{ needs.train-model.outputs.commit_sha }}
+      - name: wait for pipeline run
+        id: run_waiter
+        run: | 
+          export RUN_STATUS=`python3 ./github_actions/wait_run_completion.py --cloud-environment=${{ needs.train-model.outputs.deploy_env }} --run-id=${{ needs.train-model.outputs.run_id }}`
+          echo "run_status=$RUN_STATUS" >> $GITHUB_OUTPUT
+      - name: read artifact of run
+        if: steps.run_waiter.outputs.run_status == "Succeeded"
+        run: |
+          export MODEL_URI=`python3 ./github_actions/read_pipeline_output.py --cloud-environment=${{ needs.train-model.outputs.deploy_env }} --run-id=${{ needs.train-model.outputs.run_id }} --component-name=upload-savedmodel --artifact-name=upload-savedmodel-Output`
+          echo "model_uri=$MODEL_URI" >> $GITHUB_OUTPUT
+      - name: commenting on PR (Succeeded) 
+        if: steps.run_waiter.outputs.run_status == "Succeeded"
+        uses: actions/github-script@v6
+        with:
+          script: |
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: `
+                # Run: has been successfully completed
+                Artifact of run is uploaded into artifact repository`
+            })
+      - name: commenting on PR (Failed) 
+        if: steps.run_waiter.outputs.run_status == "Failed"
+        uses: actions/github-script@v6
+        with:
+          script: |
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: `
+                # Run: has been completed with failure
+                Access to the Kubeflow UI and check details of run`
+            })
+      - name: commenting on PR (timeout) 
+        if: steps.run_waiter.outputs.run_status == "TimeoutError"
+        uses: actions/github-script@v6
+        with:
+          script: |
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: `
+                # Run: has exceeded timeout and NOT been completed yet
+                Access to the Kubeflow UI and check status of RUN yourself`
             })

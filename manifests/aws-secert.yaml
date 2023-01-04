@@ -1,0 +1,14 @@
+#
+# s3 credentials to your artifact repository
+#
+apiVersion: v1
+kind: Secret
+metadata:
+  name: s3-secret-artifact
+  namespace: <YOUR_NAMESPACE>
+type: Opaque
+stringData:
+  s3_bucket_name: <YOUR_BUCKET_NAME>
+  s3_region: <AWS_REGION>
+  s3_access_key: <YOUR_ACCESS_KEY>
+  s3_secret_key: <YOUR_SECRET_KEY>

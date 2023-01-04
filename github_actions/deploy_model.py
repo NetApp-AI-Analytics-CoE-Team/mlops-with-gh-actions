@@ -15,7 +15,7 @@ from yaml import safe_load
 def create_inference_server(
     deploy_environment:str, 
     model_name:str,
-    model_url:str
+    s3_uri:str
     ):
     # loading environments config
     env_file_path = os.path.join(os.path.dirname(os.path.abspath(__file__)),'environments.yaml')
@@ -51,7 +51,7 @@ def create_inference_server(
     default_model_spec = V1beta1InferenceServiceSpec(
         predictor=V1beta1PredictorSpec(
             service_account_name='kserve-service-credentials',
-            tensorflow=V1beta1TFServingSpec(storage_uri=model_url)
+            tensorflow=V1beta1TFServingSpec(storage_uri=s3_uri)
         ))
 
     isvc = V1beta1InferenceService(api_version=constants.KSERVE_V1BETA1,
@@ -77,7 +77,7 @@ if __name__ == "__main__":
     ret = create_inference_server(
         deploy_environment=args.cloud_environment, 
         model_name=args.model_name,
-        model_url=args.model_uri
+        s3_uri=args.model_uri
     )
 
     if ret:

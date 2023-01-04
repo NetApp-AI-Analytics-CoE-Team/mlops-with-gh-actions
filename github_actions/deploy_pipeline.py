@@ -5,7 +5,9 @@ import datetime
 from yaml import safe_load
 import json
 import os
+import sys
 
+# build pipeline package and upload pipeline package as a new pipeline version
 def deploy_pipeline(
     pipeline_yaml_path:str, 
     deploy_environment:str, 
@@ -48,6 +50,7 @@ def deploy_pipeline(
 
     return(pipeline_version_info)
 
+# create run of pipeline
 def run_pipeline(
     deploy_environment:str,
     pipeline_version_id:str,
@@ -97,17 +100,22 @@ if __name__ == "__main__":
         pipeline_yaml_path=args.pipeline_package_path,
         pipeline_version_name=args.pipeline_version
         )
-
+            
     # run pipeline
-    if not args.deploy_only:
+    if args.deploy_only:
+        sys.stdout.write(pipeline_version_info)
+    else:
         # read params file
         pipeline_params_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), os.pardir)
         pipeline_params_file = os.path.join(pipeline_params_dir, "pipeline_params.yaml")
         with open(pipeline_params_file, 'r') as yml:
             pipeline_params_content = safe_load(yml)
 
+        # run pipeline
         run_info = run_pipeline(
             deploy_environment=args.cloud_environment, 
             pipeline_version_id=pipeline_version_info.id,
             params=pipeline_params_content
         )
+    
+        sys.stdout.write(run_info.run.id)
