@@ -138,6 +138,10 @@ jobs:
       - initiate-model-training-run
       - wait-for-run-completion
     steps:
+      - name: clone branch of PR
+        uses: actions/checkout@master
+        with:
+          ref: ${{ needs.initiate-model-training-run.outputs.commit_sha }}
       # in case of succeeded
       # get model uri from pipeline RUN
       - name: read artifact of run (model uri)

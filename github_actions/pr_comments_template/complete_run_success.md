@@ -13,8 +13,8 @@ To reproduce this model, you can create a Jupyter Workspace which contains sourc
 2. Restore dataset version by using NetApp DataOps Toolkit
 
 ```bash
-# Install NetApp DeepOps Toolkit
-$ python3 -m pip install netapp-deepops-k8s
+# Install NetApp DataOps Toolkit
+$ python3 -m pip install netapp-dataops-k8s
 
 # Clone PVC from snapshot that was taken at model training
 $ netapp_dataops_k8s_cli.py clone volume --namespace=${{ needs.initiate-model-training-run.outputs.kubeflow_profile }} --source-snapshot-name=${{ steps.output_dataset_version.outputs.dataset_version }} --new-pvc-name=clone-${{ steps.output_dataset_version.outputs.dataset_version }}
