@@ -72,12 +72,15 @@ jobs:
         if: ${{ needs.initiate-model-training-run.result == 'success' }}
         uses: actions/github-script@v6
         with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
-            github.rest.issues.createComment({
-              issue_number: context.issue.number,
+            const params = {
               owner: context.repo.owner,
               repo: context.repo.repo,
-              body: `${{ steps.success_comment.outputs.message }}`
+              issue_number: context.payload.pull_request.number,
+              body: '${{ steps.success_comment.outputs.message }}'
+            }
+            await github.rest.issues.createComment(params)
       # in case of failed
       - name: setup comment message (failure)
         if: ${{ needs.initiate-model-training-run.result == 'failure' }}
@@ -95,12 +98,15 @@ jobs:
         if: ${{ needs.initiate-model-training-run.result == 'failure' }}
         uses: actions/github-script@v6
         with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
-            github.rest.issues.createComment({
-              issue_number: context.issue.number,
+            const params = {
               owner: context.repo.owner,
               repo: context.repo.repo,
-              body: `${{ steps.success_comment.outputs.message }}`
+              issue_number: context.payload.pull_request.number,
+              body: '${{ steps.failure_comment.outputs.message }}'
+            }
+            await github.rest.issues.createComment(params)
   # wait for completion of pipline RUN that is initiated previous job
   # default timeout is 5 hours
   wait-for-run-completion:
