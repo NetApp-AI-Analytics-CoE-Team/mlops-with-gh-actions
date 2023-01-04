@@ -34,6 +34,8 @@ jobs:
         uses: actions/checkout@master
         with:
           ref: ${{ steps.prcomm_train.outputs.SHA }}
+      - id: output_kubeflow_url
+        run: echo "kubeflow_url=`python3 ./github_actions/client.py ${{ steps.prcomm_train.outputs.TRAILING_TOKEN }}`" >> $GITHUB_OUTPUT
       # expects pipeline function is declared in "./pipline.py"
       - name: build pipeline
         if: steps.prcomm_train.outputs.BOOL_TRIGGERED == 'true'
@@ -46,8 +48,6 @@ jobs:
           python3 ./github_actions/deploy_pipeline.py --cloud-environment=${{ steps.prcomm_train.outputs.TRAILING_TOKEN}} --pipeline-package-path=pipeline.yaml --pipeline-version=${{ steps.prcomm_train.outputs.SHA }} --output-file=tmp_run_id.txt
       - id: output_run_id
         run: echo "run_id=`cat tmp_run_id.txt`" >> $GITHUB_OUTPUT
-      - id: output_kubeflow_url
-        run: echo "kubeflow_url=`python3 ./github_actions/client.py ${{ steps.prcomm_train.outputs.TRAILING_TOKEN }}`" >> $GITHUB_OUTPUT
   # nortify result of building/uploading/running pipeline as a PR comment
   initiate-model-training-run-result:
     runs-on: self-hosted
@@ -66,9 +66,9 @@ jobs:
               repo: context.repo.repo,
               body: `# 🚀 Successfully launched the pipeline for SHA: **${{ needs.initiate-model-training-run.outputs.commit_sha }}**
                 
-                # test
-                RUN ID: \\\`\\\`\\\`${{ needs.initiate-model-training-run.outputs.run_id }}\\\`\\\`\\\`
-                I will nortify when the RUN is completed, or you can check detailed status on the ![Kubeflow UI](${{ needs.initiate-model-training-run.outputs.kubeflow_url }}).`
+                  # test
+                  RUN ID: \\\`\\\`\\\`${{ needs.initiate-model-training-run.outputs.run_id }}\\\`\\\`\\\`
+                  I will nortify when the RUN is completed, or you can check detailed status on the ![Kubeflow UI](${{ needs.initiate-model-training-run.outputs.kubeflow_url }}).`
             })
       # in case of failed
       - name: commenting on PR (failure) 
@@ -82,8 +82,8 @@ jobs:
               repo: context.repo.repo,
               body: `# ❌ Failed to launch the pipeline for SHA: **${{ needs.initiate-model-training-run.outputs.commit_sha }}**
 
-                # test
-                Check Actions tab and ![Kubeflow UI](${{ needs.initiate-model-training-run.kubeflow_ui }}) to find the error cause.`
+                  # test
+                  Check Actions tab and ![Kubeflow UI](${{ needs.initiate-model-training-run.kubeflow_ui }}) to find the error cause.`
             })
   # wait for completion of pipline RUN that is initiated previous job
   # default timeout is 5 hours
