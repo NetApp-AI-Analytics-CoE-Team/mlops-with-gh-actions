@@ -60,7 +60,7 @@ def create_inference_server(
     # in case of inference serivce already exists
     if is_inference_serive_exist:
         try:
-            kserve.replace(isvc, watch=True)
+            kserve.replace(model_name, isvc, watch=True)
             return True
         except Exception as e:
             print(e)
