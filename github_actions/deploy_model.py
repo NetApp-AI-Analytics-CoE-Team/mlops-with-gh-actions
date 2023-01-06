@@ -13,35 +13,30 @@ import argparse
 from yaml import safe_load
 
 def create_inference_server(
-    deploy_environment:str, 
+    namespace:str, 
+    s3_region:str,
+    s3_access_key_base64:str,
+    s3_secret_key_base64:str,
     model_name:str,
     s3_uri:str
     ):
-    # loading environments config
-    env_file_path = os.path.join(os.path.dirname(os.path.abspath(__file__)),'environments.yaml')
-    with open(env_file_path, 'r') as yml:
-        config = safe_load(yml)
-    NAMESPACE = config[deploy_environment]['serving_namespace']
-    S3_REGION = config[deploy_environment]['artifact_repository']['s3_region']
-    S3_ACCESS_KEY = config[deploy_environment]['artifact_repository']['s3_access_key_base64']
-    S3_SECRET_KEY = config[deploy_environment]['artifact_repository']['s3_secret_key_base64']
 
     # create temporary aws credential file
     aws_credintial_path = "/tmp/awscredentials"
     with open(aws_credintial_path, 'w') as awscred:
         awscred.write('[default]\n')
-        awscred.write(f'aws_access_key_id = {S3_ACCESS_KEY}\n')
-        awscred.write(f'aws_secret_access_key = {S3_SECRET_KEY}\n')
+        awscred.write(f'aws_access_key_id = {s3_access_key_base64}\n')
+        awscred.write(f'aws_secret_access_key = {s3_secret_key_base64}\n')
 
     # create client
     kserve = KServeClient()
     kserve.set_credentials(
         storage_type='S3',
         service_account=model_name, # create ServiceAccount as model name
-        namespace=NAMESPACE,
+        namespace=namespace,
         credentials_file=aws_credintial_path,
         s3_profile='default',
-        s3_region=S3_REGION,
+        s3_region=s3_region,
         s3_use_https='1',
     )
 
@@ -56,7 +51,7 @@ def create_inference_server(
 
     isvc = V1beta1InferenceService(api_version=constants.KSERVE_V1BETA1,
                             kind=constants.KSERVE_KIND,
-                            metadata=client.V1ObjectMeta(name=model_name, namespace=NAMESPACE),
+                            metadata=client.V1ObjectMeta(name=model_name, namespace=namespace),
                             spec=default_model_spec)
 
     # create inference server
@@ -69,15 +64,21 @@ def create_inference_server(
 if __name__ == "__main__":
     # define command line arguments 
     parser = argparse.ArgumentParser()
-    parser.add_argument('-c', '--cloud-environment', help="specify 'on-prem' or 'cloud'", required=True)
-    parser.add_argument('-m', '--model-name', help="model name", required=True)
-    parser.add_argument('-u', '--model-uri', help="s3 uri that stores model archive", required=True)
+    parser.add_argument('--namespace', help="serving namespace", required=True)
+    parser.add_argument('--region', help="region of the aritifact repository", required=True)
+    parser.add_argument('--access-key-base64', help="base64 encoded access key of the aritifact repository", required=True)
+    parser.add_argument('--secret-key-base64', help="base64 encoded secret key of the aritifact repository", required=True)
+    parser.add_argument('--model-name', help="model name", required=True)
+    parser.add_argument('--model-uri', help="s3 uri that stores model archive", required=True)
     args = parser.parse_args()
 
     ret = create_inference_server(
-        deploy_environment=args.cloud_environment, 
-        model_name=args.model_name,
-        s3_uri=args.model_uri
+        namespace = args.namespace, 
+        s3_region = args.region,
+        s3_access_key_base64 = args.access_key_base64,
+        s3_secret_key_base64 = args.secret_key_base64,
+        model_name = args.model_name,
+        s3_uri = args.model_uri
     )
 
     if ret:

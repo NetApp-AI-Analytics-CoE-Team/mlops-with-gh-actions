@@ -1,0 +1,54 @@
+name: ChatOps for serving AI/ML model
+on: [issue_comment]
+
+jobs:
+  # build, upload, and run pipeline based on commited source code
+  detect_pr_comments:
+    runs-on: self-hosted
+    outputs: 
+      model_uri: ${{ steps.output_model_uri.outputs.model_uri }}
+      commit_sha: ${{ steps.output_sha.outputs.sha }}
+    steps:
+      # using below actions
+      # https://github.com/marketplace/actions/chatops-for-pull-requests
+      - name: listen for PR Comments (train)
+        id: prcomm_serve
+        uses: machine-learning-apps/actions-chatops@master
+        with:
+          APP_PEM: ${{ secrets.APP_PEM }}
+          APP_ID: ${{ secrets.APP_ID }}
+          TRIGGER_PHRASE: "/serve-model"
+          INDICATOR_LABEL: "chatops-model-serving"
+        env: # you must supply GITHUB_TOKEN
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      # if PR comment does not match, abort this job
+      - name: prcomm_check
+        if: steps.prcomm_serve.outputs.BOOL_TRIGGERED == 'false'
+        run: /bin/bash -c false
+      # output variables for following jobs
+      - id: output_model_uri
+        run: echo "model_uri=${{ steps.prcomm_serve.outputs.TRAILING_TOKEN }}" >> $GITHUB_OUTPUT
+      - id: output_sha
+        run: echo "sha=${{ steps.prcomm_serve.outputs.SHA }}" >> $GITHUB_OUTPUT
+  serving:
+    runs-on: self-hosted
+    needs: detect_pr_comments
+    environment:
+      name: Serving
+    steps:
+      # This step clones the branch of the PR associated with the triggering phrase, but only if it is triggered.
+      - name: clone branch of PR
+        uses: actions/checkout@master
+        with:
+          ref: ${{ steps.prcomm_serve.outputs.SHA }}
+      - name: output repository name
+        id: output_repository_name
+        # from OWNER/REPOSITORY format, get only REPOSITORY name
+        run: echo "repository_name=`echo ${{ github.repository }} | cut -f 2 -d "/" -`" >> $GITHUB_OUTPUT
+      - name: deploy model by KServe
+        run: python3 ./github_actions/deploy_model.py --namespace=${{ secrets.NAMESPACE }} --region=${{ secrets.ARTIFACT_REPO_REGION }} --access-key-base64=${{ secrets.ARTIFACT_REPO_ACCESS_KEY_BASE64 }} --secret-key-base64=${{ secrets.ARTIFACT_REPO_SECRET_KEY_BASE64 }} --model-name=${{ steps.output_repository_name.outputs.repository_name}} --model-uri=${{ needs.detect_pr_comments.outputs.model_uri }}
+      - name: output virtual hostname
+        id: output_virtual_hostname
+        run: echo "virtual_hostname=`echo ${{ steps.output_repository_name.outputs.repository_name}}.${{ secrets.NAMESPACE }}.example.com >> $GITHUB_OUTPUT
+      - name: test inference server
+        run: python3 ./github_actions/inference_test.py --endpoint=${{ secrets.KUBEFLOW_ENDPOINT }} --username=${{ secrets.KUBEFLOW_USERNAME }} --password=${{ secrets.KUBEFLOW_PASSWORD }} --model-name=${{ steps.output_repository_name.outputs.repository_name}} --hostname=${{ steps.output_virtual_hostname.outputs.virtual_hostname}}
