@@ -51,6 +51,6 @@ jobs:
         run: python3 ./github_actions/deploy_model.py --namespace=${{ secrets.NAMESPACE }} --region=${{ secrets.ARTIFACT_REPO_REGION }} --access-key-base64=${{ secrets.ARTIFACT_REPO_ACCESS_KEY_BASE64 }} --secret-key-base64=${{ secrets.ARTIFACT_REPO_SECRET_KEY_BASE64 }} --model-name=${{ steps.output_repository_name.outputs.repository_name}} --model-uri=${{ needs.detect_pr_comments.outputs.model_uri }}
       - name: output virtual hostname
         id: output_virtual_hostname
-        run: echo "virtual_hostname=`echo ${{ steps.output_repository_name.outputs.repository_name}}.${{ secrets.NAMESPACE }}.example.com` >> $GITHUB_OUTPUT
+        run: echo "virtual_hostname=`echo ${{ steps.output_repository_name.outputs.repository_name}}.${{ secrets.NAMESPACE }}.example.com`" >> $GITHUB_OUTPUT
       - name: test inference server
         run: python3 ./github_actions/inference_test.py --endpoint=${{ secrets.KUBEFLOW_ENDPOINT }} --username=${{ secrets.KUBEFLOW_USERNAME }} --password=${{ secrets.KUBEFLOW_PASSWORD }} --model-name=${{ steps.output_repository_name.outputs.repository_name}} --hostname=${{ steps.output_virtual_hostname.outputs.virtual_hostname}}
