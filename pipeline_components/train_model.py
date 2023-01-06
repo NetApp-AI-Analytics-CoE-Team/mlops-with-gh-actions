@@ -5,18 +5,6 @@ Reference:
 https://www.tensorflow.org/hub/tutorials/tf2_image_retraining
 """
 
-# def build_dataset(subset):
-#   return tf.keras.preprocessing.image_dataset_from_directory(
-#       data_dir,
-#       validation_split=.20,
-#       subset=subset,
-#       label_mode="categorical",
-#       # Seed needs to provided when using validation_split and shuffle = True.
-#       # A fixed seed is used so that the validation set is stable across runs.
-#       seed=123,
-#       image_size=IMAGE_SIZE,
-#       batch_size=1)
-
 def transfer_learning(
     model_name:str,
     data_dir:str,
@@ -39,8 +27,8 @@ def transfer_learning(
 
     # base model definition
     # MODEL_NAME = "efficientnetv2-xl-21k"
-    MODEL_URL = 'https://tfhub.dev/google/imagenet/efficientnet_v2_imagenet21k_xl/feature_vector/2'
-    IMAGE_SIZE = (512, 512)
+    MODEL_URL = "https://tfhub.dev/google/imagenet/inception_v3/feature_vector/5"
+    IMAGE_SIZE = (299, 299)
     DATASET_ROOT = os.path.join(data_dir, "flower_photos")
 
     # preprocessing dataset
@@ -85,9 +73,7 @@ def transfer_learning(
         # loaded by the TFLiteConverter
         tf.keras.layers.InputLayer(input_shape=IMAGE_SIZE + (3,)),
         hub.KerasLayer(MODEL_URL, trainable=False),
-        tf.keras.layers.Dropout(rate=dropout_rate),
-        tf.keras.layers.Dense(len(class_names),
-                            kernel_regularizer=tf.keras.regularizers.l2(0.0001))
+        tf.keras.layers.Dense(len(class_names), activation='softmax')
     ])
     model.build((None,)+IMAGE_SIZE+(3,))
     model.summary()

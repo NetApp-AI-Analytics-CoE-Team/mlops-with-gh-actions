@@ -65,6 +65,7 @@ jobs:
           lf='\n'
           message="## :pushpin: Actions Result - Build, Deploy and Create ML pipeline Run"
           message+="${lf}:rocket: Successfully launched the pipeline for SHA: \`${{ needs.initiate-model-training-run.outputs.commit_sha }}\`"
+          message+="<br />"
           message+="${lf}You will be notified when the pipeline RUN is completed or exceeded timeout."
           message+="${lf}Or you can check detailed status of RUN in Kubeflow UI using below informations."
           message+="${lf}## :runner: Run information"
