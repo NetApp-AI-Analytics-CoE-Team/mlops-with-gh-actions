@@ -54,12 +54,25 @@ def create_inference_server(
                             metadata=client.V1ObjectMeta(name=model_name, namespace=namespace),
                             spec=default_model_spec)
 
-    # create inference server
-    try:
-        kserve.create(isvc, watch=True)
-        return True
-    except:
-        return False
+    # checking if there is a inference service which has same name as being about to created
+    is_inference_serive_exist = kserve.get(model_name, namespace=namespace)
+
+    # in case of inference serivce already exists
+    if is_inference_serive_exist:
+        try:
+            kserve.replace(isvc, watch=True)
+            return True
+        except Exception as e:
+            print(e)
+            return False
+    # in case of not existing, create a new inference service
+    else:
+        try:
+            kserve.create(isvc, watch=True)
+            return True
+        except Exception as e:
+            print(e)
+            return False
 
 if __name__ == "__main__":
     # define command line arguments 
