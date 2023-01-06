@@ -37,7 +37,7 @@ def create_inference_server(
     kserve = KServeClient()
     kserve.set_credentials(
         storage_type='S3',
-        service_account=model_name # create ServiceAccount as model name
+        service_account=model_name, # create ServiceAccount as model name
         namespace=NAMESPACE,
         credentials_file=aws_credintial_path,
         s3_profile='default',

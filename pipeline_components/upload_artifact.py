@@ -19,7 +19,7 @@ def upload_savedmodel(
 
     # archive savedmodel directory
     with tarfile.open(name=ARCHIVE_TEMP_PATH, mode="w:gz") as mytar:
-        mytar.add(input_model_path, arcname="")
+        mytar.add(input_model_path, arcname="1")
 
     # create s3 client
     client = boto3.client(
