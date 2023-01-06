@@ -44,7 +44,9 @@ jobs:
       - name: output repository name
         id: output_repository_name
         # from OWNER/REPOSITORY format, get only REPOSITORY name
-        run: echo "repository_name=`echo ${{ github.repository }} | cut -f 2 -d "/" -`" >> $GITHUB_OUTPUT
+        run: | 
+          REPONAME=`echo ${{ github.repository }} | cut -f 2 -d "/" -`
+          echo "repository_name=`echo $REPONAME | sed -e s/_/-/g`" >> $GITHUB_OUTPUT
       - name: deploy model by KServe
         run: python3 ./github_actions/deploy_model.py --namespace=${{ secrets.NAMESPACE }} --region=${{ secrets.ARTIFACT_REPO_REGION }} --access-key-base64=${{ secrets.ARTIFACT_REPO_ACCESS_KEY_BASE64 }} --secret-key-base64=${{ secrets.ARTIFACT_REPO_SECRET_KEY_BASE64 }} --model-name=${{ steps.output_repository_name.outputs.repository_name}} --model-uri=${{ needs.detect_pr_comments.outputs.model_uri }}
       - name: output virtual hostname
