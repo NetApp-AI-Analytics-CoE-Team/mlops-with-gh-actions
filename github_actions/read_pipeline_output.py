@@ -47,17 +47,26 @@ def get_artifact(*, run_id: str, node_id: str, artifact_name: str, client: kfp.C
 if __name__ == "__main__":
     # define command line arguments 
     parser = argparse.ArgumentParser()
-    parser.add_argument('-c', '--cloud-environment', help="specify 'on-prem' or 'cloud'", required=True)
-    parser.add_argument('-r', '--run-id', help="Run ID you want to check status", required=True)
-    parser.add_argument('-n', '--component-name', help="component name", required=True)
-    parser.add_argument('-a', '--artifact-name', help="artifact name", required=True)
-    parser.add_argument('-o', '--output-file', help="specify file path if you want to store output into a file")
+    parser.add_argument('--k8s-context', help="kubeconfig context name", required=True)
+    parser.add_argument('--kf-endpoint', help="kubeflow endpoint", required=True)
+    parser.add_argument('--kf-username', help="kubeflow username", required=True)
+    parser.add_argument('--kf-password', help="kubeflow password", required=True)
+    parser.add_argument('--namespace', help="kubeflow profile", required=True)
+    parser.add_argument('--run-id', help="Run ID you want to check status", required=True)
+    parser.add_argument('--component-name', help="component name", required=True)
+    parser.add_argument('--artifact-name', help="artifact name", required=True)
+    parser.add_argument('--output-file', help="specify file path if you want to store output into a file")
     args = parser.parse_args()
 
     # get kfp client connection
-    client_info = get_kubeflow_client(args.cloud_environment)
-    kfp_client = client_info["kfp_client"]   
-    kfp_client.set_user_namespace(client_info["kfp_namespace"])
+    kfp_client_dict = get_kubeflow_client(
+        kubeconfig_context = args.k8s_context,
+        kubeflow_endpoint = args.kf_endpoint,
+        kubeflow_username = args.kf_username,
+        kubeflow_password = args.kf_password
+    )
+    kfp_client = kfp_client_dict['data']
+    kfp_client.set_user_namespace(args.namespace)
 
     node_id = get_node_id(run_id=args.run_id, component_name=args.component_name, client=kfp_client)
     artifact = get_artifact(

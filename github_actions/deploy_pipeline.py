@@ -9,16 +9,15 @@ import sys
 
 # build pipeline package and upload pipeline package as a new pipeline version
 def deploy_pipeline(
+    kfp_client_dict:dict,
+    kfp_namespace:str,
     pipeline_yaml_path:str, 
-    deploy_environment:str, 
     pipeline_version_name:str, 
     ):
 
     # get kfp client connection
-    client_info = get_kubeflow_client(deploy_environment)
-    kfp_client = client_info["kfp_client"]   
-    kfp_client.set_user_namespace(client_info["kfp_namespace"])
-    # experiment_name = client_info["kfp_experinment_name"]
+    kfp_client = kfp_client_dict["data"]   
+    kfp_client.set_user_namespace(kfp_namespace)
 
     # check pipeline existence
     with open(pipeline_yaml_path, 'r') as yml:
@@ -57,19 +56,19 @@ def deploy_pipeline(
 
 # create run of pipeline
 def run_pipeline(
-    deploy_environment:str,
+    kfp_client_dict:dict,
+    kfp_namespace:str,
+    kfp_experinment_name:str,
     pipeline_version_id:str,
     params:str = None 
     ):
 
     # get kfp client connection
-    client_info = get_kubeflow_client(deploy_environment)
-    kfp_client = client_info["kfp_client"]   
+    kfp_client = kfp_client_dict["data"]   
     kfp_client.set_user_namespace(client_info["kfp_namespace"])
-    experiment_name = client_info["kfp_experinment_name"]
 
     # get experiment id by name
-    experiment_info = kfp_client.get_experiment(experiment_name=experiment_name, namespace=client_info["kfp_namespace"])
+    experiment_info = kfp_client.get_experiment(experiment_name=kfp_experinment_name, namespace=kfp_namespace)
 
     # generate job name
     t_delta = datetime.timedelta(hours=9)
@@ -97,18 +96,32 @@ def run_pipeline(
 if __name__ == "__main__":
     # define command line arguments 
     parser = argparse.ArgumentParser()
-    parser.add_argument('-c', '--cloud-environment', help="specify 'on-prem' or 'cloud'", required=True)
-    parser.add_argument('-f', '--pipeline-package-path', help="pipeline package path", required=True)
-    parser.add_argument('-v', '--pipeline-version', help="pipeline version name", required=True)
-    parser.add_argument('-d', '--deploy-only', action='store_true', help="specify if you don't want to run pipeline")
-    parser.add_argument('-o', '--output-file', help="specify file path if you want to store output into a file")
+    parser.add_argument('--k8s-context', help="kubeconfig context name", required=True)
+    parser.add_argument('--kf-endpoint', help="kubeflow endpoint", required=True)
+    parser.add_argument('--kf-username', help="kubeflow username", required=True)
+    parser.add_argument('--kf-password', help="kubeflow password", required=True)
+    parser.add_argument('--namespace', help="kubeflow profile", required=True)
+    parser.add_argument('--kf-experiment-name', help="kubeflow experiment name", required=True)
+    parser.add_argument('--pipeline-package-path', help="pipeline package path", required=True)
+    parser.add_argument('--pipeline-version', help="pipeline version name", required=True)
+    parser.add_argument('--deploy-only', action='store_true', help="specify if you don't want to run pipeline")
+    parser.add_argument('--output-file', help="specify file path if you want to store output into a file")
     args = parser.parse_args()
+
+    # get kfp client
+    kfp_client_dict = get_kubeflow_client(
+        kubeconfig_context = args.k8s_context,
+        kubeflow_endpoint = args.kf_endpoint,
+        kubeflow_username = args.kf_username,
+        kubeflow_password = args.kf_password
+    )
 
     # deploy pipeline
     pipeline_version_info = deploy_pipeline(
-        deploy_environment=args.cloud_environment, 
-        pipeline_yaml_path=args.pipeline_package_path,
-        pipeline_version_name=args.pipeline_version
+        kfp_client_dict = kfp_client_dict, 
+        kfp_namespace = args.namespace,
+        pipeline_yaml_path = args.pipeline_package_path,
+        pipeline_version_name = args.pipeline_version
         )
     if pipeline_version_info == None:
         sys.exit(1)
@@ -125,9 +138,11 @@ if __name__ == "__main__":
 
         # run pipeline
         run_info = run_pipeline(
-            deploy_environment=args.cloud_environment, 
-            pipeline_version_id=pipeline_version_info.id,
-            params=pipeline_params_content
+            kfp_client_dict = kfp_client_dict, 
+            kfp_namespace = args.namespace,
+            kfp_experinment_name = args.kf_experiment_name,
+            pipeline_version_id = pipeline_version_info.id,
+            params = pipeline_params_content
         )
         if run_info == None:
             sys.exit(1)

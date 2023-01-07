@@ -2,15 +2,10 @@ name: ChatOps for training AI/ML model
 on: [issue_comment]
 
 jobs:
-  # build, upload, and run pipeline based on commited source code
-  initiate-model-training-run:
+  detect_pr_comments:
     runs-on: self-hosted
     outputs: 
-      deploy_env: ${{ steps.output_deploy_env.outputs.deploy_env }}
       commit_sha: ${{ steps.output_sha.outputs.sha }}
-      kubeflow_url: ${{ steps.output_kubeflow_url.outputs.kubeflow_url }}
-      kubeflow_profile: ${{ steps.output_kubeflow_profile.outputs.kubeflow_profile }}
-      run_id: ${{ steps.output_run_id.outputs.run_id }}
     steps:
       # using below actions
       # https://github.com/marketplace/actions/chatops-for-pull-requests
@@ -24,31 +19,44 @@ jobs:
           INDICATOR_LABEL: "chatops-model-training"
         env: # you must supply GITHUB_TOKEN
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      # if PR comment does not match, abort this job
+      - name: prcomm_check
+        if: steps.prcomm_train.outputs.BOOL_TRIGGERED == 'false'
+        run: /bin/bash -c false
       # output variables for following jobs
-      - id: output_deploy_env
-        run: echo "deploy_env=${{ steps.prcomm_train.outputs.TRAILING_TOKEN }}" >> $GITHUB_OUTPUT
       - id: output_sha
         run: echo "sha=${{ steps.prcomm_train.outputs.SHA }}" >> $GITHUB_OUTPUT
+  # build, upload, and run pipeline based on commited source code
+  initiate-model-training-run:
+    runs-on: self-hosted
+    needs: detect_pr_comments
+    environment:
+      name: Training
+    outputs:
+      run_id: ${{ steps.output_run_id.outputs.run_id }}
+    steps:
       # This step clones the branch of the PR associated with the triggering phrase, but only if it is triggered.
       - name: clone branch of PR
-        if: steps.prcomm_train.outputs.BOOL_TRIGGERED == 'true'
         uses: actions/checkout@master
         with:
-          ref: ${{ steps.prcomm_train.outputs.SHA }}
-      - id: output_kubeflow_url
-        run: echo "kubeflow_url=`python3 ./github_actions/client.py ${{ steps.prcomm_train.outputs.TRAILING_TOKEN }} endpoint`" >> $GITHUB_OUTPUT
-      - id: output_kubeflow_profile
-        run: echo "kubeflow_profile=`python3 ./github_actions/client.py ${{ steps.prcomm_train.outputs.TRAILING_TOKEN }} namespace`" >> $GITHUB_OUTPUT
+          ref: ${{ needs.detect_pr_comments.outputs.SHA }}
       # building pipeline package
       # expects pipeline function is declared in "./pipline.py"
       - name: build pipeline
-        if: steps.prcomm_train.outputs.BOOL_TRIGGERED == 'true'
         run: python3 ./pipeline.py ./pipeline.yaml
       - name: deploy and run pipeline
         id: train_launcher
-        if: steps.prcomm_train.outputs.BOOL_TRIGGERED == 'true'
         run: |
-          python3 ./github_actions/deploy_pipeline.py --cloud-environment=${{ steps.prcomm_train.outputs.TRAILING_TOKEN}} --pipeline-package-path=pipeline.yaml --pipeline-version=${{ steps.prcomm_train.outputs.SHA }} --output-file=tmp_run_id.txt
+          python3 ./github_actions/deploy_pipeline.py \
+            --k8s-context=${{ secrets.K8S_CONTEXT }} \
+            --kf-endpoint=${{ secrets.KUBEFLOW_ENDPOINT }} \
+            --kf-username=${{ secrets.KUBEFLOW_USERNAME }} \
+            --kf-password=${{ secrets.KUBEFLOW_PASSWORD }} \
+            --namespace=${{ secrets.NAMESPACE }} \
+            --kf-experiment-name=${{ secrets.KUBEFLOW_EXPERIMENT_NAME }} \
+            --pipeline-package-path=pipeline.yaml \
+            --pipeline-version=${{ steps.prcomm_train.outputs.SHA }} \
+            --output-file=tmp_run_id.txt
       - id: output_run_id
         run: echo "run_id=`cat tmp_run_id.txt`" >> $GITHUB_OUTPUT
   # nortify result of building/uploading/running pipeline as a PR comment
@@ -56,6 +64,8 @@ jobs:
     runs-on: self-hosted
     if: ${{ always() }}
     needs: initiate-model-training-run
+    environment:
+      name: Training
     steps:
       # in case of succeeded
       - name: setup comment message (success)
@@ -64,13 +74,13 @@ jobs:
         run: |
           lf='\n'
           message="## :pushpin: Actions Result - Build, Deploy and Create ML pipeline Run"
-          message+="${lf}:rocket: Successfully launched the pipeline for SHA: \`${{ needs.initiate-model-training-run.outputs.commit_sha }}\`"
+          message+="${lf}:rocket: Successfully launched the pipeline for SHA: \`${{ needs.detect_pr_comments.outputs.commit_sha }}\`"
           message+="<br />"
           message+="${lf}You will be notified when the pipeline RUN is completed or exceeded timeout."
           message+="${lf}Or you can check detailed status of RUN in Kubeflow UI using below informations."
           message+="${lf}## :runner: Run information"
-          message+="${lf}Kubeflow Endpoint: ${{ needs.initiate-model-training-run.outputs.kubeflow_url }}"
-          message+="${lf}Kubeflow Profile(k8s namespace): ${{ needs.initiate-model-training-run.outputs.kubeflow_profile }}"
+          message+="${lf}Kubeflow Endpoint: ${{ secrets.KUBEFLOW_ENDPOINT }}"
+          message+="${lf}Kubeflow Profile(k8s namespace): ${{ secrets.NAMESPACE }}"
           message+="${lf}RUN ID: ${{ needs.initiate-model-training-run.outputs.run_id }}"
           echo "message=${message}" >> $GITHUB_OUTPUT
       - name: commenting on PR (success) 
@@ -93,10 +103,10 @@ jobs:
         run: |
           lf='\n'
           message="## :pushpin: Actions Result - Build, Deploy and Create ML pipeline Run"
-          message+="${lf}:x: Failed to launch the pipeline for SHA: \`${{ needs.initiate-model-training-run.outputs.commit_sha }}\`"
+          message+="${lf}:x: Failed to launch the pipeline for SHA: \`${{ needs.detect_pr_comments.outputs.commit_sha }}\`"
           message+="${lf}Check Actions tab and Kubeflow UI to find the error cause."  
           message+="<br />"
-          message+="${lf}Kubeflow Endpoint: ${{ needs.initiate-model-training-run.outputs.kubeflow_url }}"
+          message+="${lf}Kubeflow Endpoint: ${{ secrets.KUBEFLOW_ENDPOINT }}"
           echo "message=${message}" >> $GITHUB_OUTPUT
       - name: commenting on PR (failure) 
         if: ${{ needs.initiate-model-training-run.result == 'failure' }}
@@ -116,19 +126,29 @@ jobs:
   wait-for-run-completion:
     runs-on: self-hosted
     needs: 
+      - detect_pr_comments
       - initiate-model-training-run
       - initiate-model-training-run-result
+    environment:
+      name: Training
     outputs: 
       run_status: ${{ steps.output_run_status.outputs.run_status }}
     steps:
       - name: clone branch of PR
         uses: actions/checkout@master
         with:
-          ref: ${{ needs.initiate-model-training-run.outputs.commit_sha }}
+          ref: ${{ needs.detect_pr_comments.outputs.commit_sha }}
       - name: wait for pipeline run
         id: run_waiter
         run: | 
-          python3 ./github_actions/wait_run_completion.py --cloud-environment=${{ needs.initiate-model-training-run.outputs.deploy_env }} --run-id=${{ needs.initiate-model-training-run.outputs.run_id }} --output-file=tmp_run_status.txt
+          python3 ./github_actions/wait_run_completion.py \
+            --k8s-context=${{ secrets.K8S_CONTEXT }} \
+            --kf-endpoint=${{ secrets.KUBEFLOW_ENDPOINT }} \
+            --kf-username=${{ secrets.KUBEFLOW_USERNAME }} \
+            --kf-password=${{ secrets.KUBEFLOW_PASSWORD }} \
+            --namespace=${{ secrets.NAMESPACE }} \
+            --run-id=${{ needs.initiate-model-training-run.outputs.run_id }} \
+            --output-file=tmp_run_status.txt
       - id: output_run_status
         run: echo "run_status=`cat tmp_run_status.txt`" >> $GITHUB_OUTPUT
   # nortify result of pipeline RUN as a PR comment
@@ -136,19 +156,31 @@ jobs:
   wait-for-run-completion-result:
     runs-on: self-hosted
     needs:
+      - detect_pr_comments
       - initiate-model-training-run
       - wait-for-run-completion
+    environment:
+      name: Training
     steps:
       - name: clone branch of PR
         uses: actions/checkout@master
         with:
-          ref: ${{ needs.initiate-model-training-run.outputs.commit_sha }}
+          ref: ${{ needs.detect_pr_comments.outputs.commit_sha }}
       # in case of succeeded
       # get model uri from pipeline RUN
       - name: read artifact of run (model uri)
         if: needs.wait-for-run-completion.outputs.run_status == 'Succeeded'
         run: |
-          python3 ./github_actions/read_pipeline_output.py --cloud-environment=${{ needs.initiate-model-training-run.outputs.deploy_env }} --run-id=${{ needs.initiate-model-training-run.outputs.run_id }} --component-name=upload-savedmodel --artifact-name=upload-savedmodel-Output --output-file=tmp_model_uri.txt
+          python3 ./github_actions/read_pipeline_output.py \
+            --k8s-context=${{ secrets.K8S_CONTEXT }} \
+            --kf-endpoint=${{ secrets.KUBEFLOW_ENDPOINT }} \
+            --kf-username=${{ secrets.KUBEFLOW_USERNAME }} \
+            --kf-password=${{ secrets.KUBEFLOW_PASSWORD }} \
+            --namespace=${{ secrets.NAMESPACE }} \
+            --run-id=${{ needs.initiate-model-training-run.outputs.run_id }} \
+            --component-name=upload-savedmodel \
+            --artifact-name=upload-savedmodel-Output \
+            --output-file=tmp_model_uri.txt
       - id: output_model_uri
         if: needs.wait-for-run-completion.outputs.run_status == 'Succeeded'
         run: echo "model_uri=`cat tmp_model_uri.txt`" >> $GITHUB_OUTPUT
@@ -156,7 +188,16 @@ jobs:
       - name: read artifact of run (dataset version)
         if: needs.wait-for-run-completion.outputs.run_status == 'Succeeded'
         run: |
-          python3 ./github_actions/read_pipeline_output.py --cloud-environment=${{ needs.initiate-model-training-run.outputs.deploy_env }} --run-id=${{ needs.initiate-model-training-run.outputs.run_id }} --component-name=create-snapshot --artifact-name=create-snapshot-Output --output-file=tmp_dataset_version.txt
+          python3 ./github_actions/read_pipeline_output.py \
+            --k8s-context=${{ secrets.K8S_CONTEXT }} \
+            --kf-endpoint=${{ secrets.KUBEFLOW_ENDPOINT }} \
+            --kf-username=${{ secrets.KUBEFLOW_USERNAME }} \
+            --kf-password=${{ secrets.KUBEFLOW_PASSWORD }} \
+            --namespace=${{ secrets.NAMESPACE }} \
+            --run-id=${{ needs.initiate-model-training-run.outputs.run_id }} \
+            --component-name=create-snapshot \
+            --artifact-name=create-snapshot-Output \
+            --output-file=tmp_dataset_version.txt
       - id: output_dataset_version
         if: needs.wait-for-run-completion.outputs.run_status == 'Succeeded'
         run: echo "dataset_version=`cat tmp_dataset_version.txt`" >> $GITHUB_OUTPUT
@@ -181,12 +222,12 @@ jobs:
           message+="${lf}$ python3 -m pip install netapp-dataops-k8s"
           message+="${lf}"
           message+="${lf}# Clone PVC from snapshot that was taken at model training"
-          message+="${lf}$ netapp_dataops_k8s_cli.py clone volume --namespace=${{ needs.initiate-model-training-run.outputs.kubeflow_profile }} --source-snapshot-name=${{ steps.output_dataset_version.outputs.dataset_version }} --new-pvc-name=clone-${{ steps.output_dataset_version.outputs.dataset_version }}"
+          message+="${lf}$ netapp_dataops_k8s_cli.py clone volume --namespace=${{ secrets.NAMESPACE }} --source-snapshot-name=${{ steps.output_dataset_version.outputs.dataset_version }} --new-pvc-name=clone-${{ steps.output_dataset_version.outputs.dataset_version }}"
           message+="${lf}\`\`\`"
           message+="${lf}3. Create Jupyter workspace with cloned PVC by using NetApp DataOps Toolkit"
           message+="${lf}\`\`\`bash"
           message+="${lf}# Create Jupyter workspace using cloned PVC"
-          message+="${lf}$ netapp_dataops_k8s_cli.py create jupyterlab --namespace=${{ needs.initiate-model-training-run.outputs.kubeflow_profile }} --workspace-name=reproduce-${{ needs.initiate-model-training-run.outputs.run_id }} --size=10Gi --mount-pvc=clone-${{ steps.output_dataset_version.outputs.dataset_version }} --nvidia-gpu=1"
+          message+="${lf}$ netapp_dataops_k8s_cli.py create jupyterlab --namespace=${{ secrets.NAMESPACE }} --workspace-name=reproduce-${{ needs.initiate-model-training-run.outputs.run_id }} --size=10Gi --mount-pvc=clone-${{ steps.output_dataset_version.outputs.dataset_version }} --nvidia-gpu=1"
           message+="${lf}\`\`\`"
           message+="${lf}4. Connect the workspace provisioned by NetApp DataOps Tooklkit"
           message+="${lf}You can find Workspace URL in result of \`netapp_dataops_k8s_cli.py create jupyterlab\` command."
@@ -194,7 +235,7 @@ jobs:
           message+="${lf}\`\`\`bash"
           message+="${lf}# Open a terminal in Jupyter Workspace and execute below commandline"
           message+="${lf}$ git clone ${{ github.repository }} ."
-          message+="${lf}$ git reset -hard ${{ needs.initiate-model-training-run.outputs.commit_sha }}"
+          message+="${lf}$ git reset -hard ${{ needs.detect_pr_comments.outputs.commit_sha }}"
           message+="${lf}\`\`\`"
           echo "message=${message}" >> $GITHUB_OUTPUT
       - name: commenting on PR (Succeeded) 
@@ -233,7 +274,7 @@ jobs:
           message+="Check detailed status of pipeline RUN in Kubeflow UI"
           message+="${lf}## :runner: Run information"
           message+="${lf}Kubeflow Endpoint: ${{ needs.initiate-model-training-run.outputs.kubeflow_url }}"
-          message+="${lf}Kubeflow Profile(k8s namespace): ${{ needs.initiate-model-training-run.outputs.kubeflow_profile }}"
+          message+="${lf}Kubeflow Profile(k8s namespace): ${{ secrets.NAMESPACE }}"
           message+="${lf}RUN ID: ${{ needs.initiate-model-training-run.outputs.run_id }}"
           echo "message=${message}" >> $GITHUB_OUTPUT      
       - name: commenting on PR (Failed) 
@@ -261,7 +302,7 @@ jobs:
           message+="Check detailed status of pipeline RUN in Kubeflow UI"
           message+="${lf}## :runner: Run information"
           message+="${lf}Kubeflow Endpoint: ${{ needs.initiate-model-training-run.outputs.kubeflow_url }}"
-          message+="${lf}Kubeflow Profile(k8s namespace): ${{ needs.initiate-model-training-run.outputs.kubeflow_profile }}"
+          message+="${lf}Kubeflow Profile(k8s namespace): ${{ secrets.NAMESPACE }}"
           message+="${lf}RUN ID: ${{ needs.initiate-model-training-run.outputs.run_id }}"
           echo "message=${message}" >> $GITHUB_OUTPUT      
       - name: commenting on PR (timeout) 

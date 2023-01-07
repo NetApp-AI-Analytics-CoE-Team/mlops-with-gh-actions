@@ -104,55 +104,24 @@ def get_istio_auth_session(url: str, username: str, password: str) -> dict:
 
     return auth_session
 
-def get_kubeflow_client(environment:str):
-
-    # loading environments config
-    env_file_path = os.path.join(os.path.dirname(os.path.abspath(__file__)),'environments.yaml')
-    with open(env_file_path, 'r') as yml:
-        config = safe_load(yml)
-
-    KUBECONFIG_CONTEXT = config[environment]['kubeconfig_context']
-    KUBEFLOW_ENDPOINT = config[environment]['kubeflow_endpoint']
-    KUBEFLOW_USERNAME = config[environment]['kubeflow_username']
-    KUBEFLOW_PASSWORD = config[environment]['kubeflow_password']
-    KUBEFLOW_NAMESPACE = config[environment]['kubeflow_namespace']
-    KUBEFLOW_EXPERIMENT_NAME = config[environment]['kubeflow_experiment_name']
-
+# def get_kubeflow_client(environment:str):
+def get_kubeflow_client(
+    kubeconfig_context:str,
+    kubeflow_endpoint:str,
+    kubeflow_username:str,
+    kubeflow_password:str,
+    ):
     # get authentication for kubeflow
     auth_session = get_istio_auth_session(
-        url=KUBEFLOW_ENDPOINT,
-        username=KUBEFLOW_USERNAME,
-        password=KUBEFLOW_PASSWORD
+        url=kubeflow_endpoint,
+        username=kubeflow_username,
+        password=kubeflow_password
     )
 
     # connecting to the kubeflow pipeline API
     client = Client(
-        host=f"{KUBEFLOW_ENDPOINT}/pipeline",
-        kube_context=KUBECONFIG_CONTEXT,
+        host=f"{kubeflow_endpoint}/pipeline",
+        kube_context=kubeconfig_context,
         cookies=auth_session["session_cookie"])
 
-    ret = {
-        "kfp_client": client,
-        "kfp_namespace": KUBEFLOW_NAMESPACE,
-        "kfp_experinment_name": KUBEFLOW_EXPERIMENT_NAME,
-        "kfp_endpoint": KUBEFLOW_ENDPOINT # for github actions
-    }
-
-    return ret
-
-# for github actions
-if __name__ == "__main__":
-    ERR = "Usage: python3 FILE_NAME.py <ENVIRONMENT_NAME> <'namespace' or 'endpoint'>"
-
-    if len(sys.argv) == 3:
-        kfp_client_info = get_kubeflow_client(sys.argv[1])
-        if sys.argv[2] == "namespace":
-            print(kfp_client_info["kfp_namespace"])
-        elif sys.argv[2] == "endpoint":
-            print(kfp_client_info["kfp_endpoint"])
-        else: 
-            print(ERR)
-            sys.exit(1)
-    else:
-        print(ERR)
-        sys.exit(1)
+    return { "data": client }
