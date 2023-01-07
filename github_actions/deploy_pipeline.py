@@ -65,7 +65,7 @@ def run_pipeline(
 
     # get kfp client connection
     kfp_client = kfp_client_dict["data"]   
-    kfp_client.set_user_namespace(client_info["kfp_namespace"])
+    kfp_client.set_user_namespace(kfp_namespace)
 
     # get experiment id by name
     experiment_info = kfp_client.get_experiment(experiment_name=kfp_experinment_name, namespace=kfp_namespace)
