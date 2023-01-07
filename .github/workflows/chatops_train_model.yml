@@ -55,7 +55,7 @@ jobs:
             --namespace=${{ secrets.NAMESPACE }} \
             --kf-experiment-name=${{ secrets.KUBEFLOW_EXPERIMENT_NAME }} \
             --pipeline-package-path=pipeline.yaml \
-            --pipeline-version=${{ steps.prcomm_train.outputs.SHA }} \
+            --pipeline-version=${{ needs.detect_pr_comments.outputs.commit_sha }} \
             --output-file=tmp_run_id.txt
       - id: output_run_id
         run: echo "run_id=`cat tmp_run_id.txt`" >> $GITHUB_OUTPUT
@@ -76,12 +76,12 @@ jobs:
         run: |
           lf='\n'
           message="## :pushpin: Actions Result - Build, Deploy and Create ML pipeline Run"
-          message+="${lf}:rocket: Successfully launched the pipeline for SHA: \`${{ needs.detect_pr_comments.outputs.commit_sha }}\`"
+          message+="${lf}:rocket: Successfully launched the pipeline for commit: \`${{ needs.detect_pr_comments.outputs.commit_sha }}\`"
           message+="<br />"
           message+="${lf}You will be notified when the pipeline RUN is completed or exceeded timeout."
           message+="${lf}Or you can check detailed status of RUN in Kubeflow UI using below informations."
           message+="${lf}## :runner: Run information"
-          message+="${lf}Kubeflow Endpoint: ${{ secrets.KUBEFLOW_ENDPOINT }}"
+          message+="${lf}Kubeflow UI: ${{ secrets.KUBEFLOW_ENDPOINT }}"
           message+="${lf}Kubeflow Profile(k8s namespace): ${{ secrets.NAMESPACE }}"
           message+="${lf}RUN ID: ${{ needs.initiate-model-training-run.outputs.run_id }}"
           echo "message=${message}" >> $GITHUB_OUTPUT
@@ -105,10 +105,10 @@ jobs:
         run: |
           lf='\n'
           message="## :pushpin: Actions Result - Build, Deploy and Create ML pipeline Run"
-          message+="${lf}:x: Failed to launch the pipeline for SHA: \`${{ needs.detect_pr_comments.outputs.commit_sha }}\`"
-          message+="${lf}Check Actions tab and Kubeflow UI to find the error cause."  
+          message+="${lf}:x: Failed to launch the pipeline for commit: \`${{ needs.detect_pr_comments.outputs.commit_sha }}\`"
           message+="<br />"
-          message+="${lf}Kubeflow Endpoint: ${{ secrets.KUBEFLOW_ENDPOINT }}"
+          message+="${lf}Check Actions tab and Kubeflow UI to find the error cause."  
+          message+="${lf}Kubeflow UI: ${{ secrets.KUBEFLOW_ENDPOINT }}"
           echo "message=${message}" >> $GITHUB_OUTPUT
       - name: commenting on PR (failure) 
         if: ${{ needs.initiate-model-training-run.result == 'failure' }}
@@ -217,6 +217,8 @@ jobs:
           message+="${lf}Artifact URI: ${{ steps.output_model_uri.outputs.model_uri }}"
           message+="${lf}## :mag: How to reproduce the model"
           message+="${lf}To reproduce this model, you can create a Jupyter Workspace which contains source code, hyper parameters, and dataset version by performing following tasks"
+          message+="<br /><details>"
+          message+="<summary>show procedure</summary>"
           message+="${lf}1. Login to workstation which can access to k8s API"
           message+="${lf}2. Restore dataset version by using NetApp DataOps Tooklkit"
           message+="${lf}\`\`\`bash"
@@ -239,6 +241,7 @@ jobs:
           message+="${lf}$ git clone ${{ github.repository }} ."
           message+="${lf}$ git reset -hard ${{ needs.detect_pr_comments.outputs.commit_sha }}"
           message+="${lf}\`\`\`"
+          message+="</details>"
           echo "message=${message}" >> $GITHUB_OUTPUT
       - name: commenting on PR (Succeeded) 
         if: needs.wait-for-run-completion.outputs.run_status == 'Succeeded'
