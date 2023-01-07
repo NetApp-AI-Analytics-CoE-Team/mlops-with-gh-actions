@@ -63,7 +63,9 @@ jobs:
   initiate-model-training-run-result:
     runs-on: self-hosted
     if: ${{ always() }}
-    needs: initiate-model-training-run
+    needs: 
+      - detect_pr_comments
+      - initiate-model-training-run
     environment:
       name: Training
     steps:
