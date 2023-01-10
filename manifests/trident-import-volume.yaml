@@ -4,7 +4,7 @@ metadata:
   name: datalake-dst
   namespace: rawdata
   annotations:
-    trident.netapp.io/shareToNamespace: experiment
+    trident.netapp.io/shareToNamespace: training
 spec:
   accessModes:
     - ReadOnlyMany
