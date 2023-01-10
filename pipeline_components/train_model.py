@@ -20,6 +20,7 @@ def transfer_learning(
     import itertools
     import os
     import numpy as np
+    import json
     import tensorflow as tf
     import tensorflow_hub as hub
     print("TF version:", tf.__version__)
