@@ -1,11 +1,11 @@
-name: Serving AI/ML model (STAGING)
-on: 
-  push:
+on:
+  pull_request:
     branches:
-      - 'development'
+      - development
+    types: [closed]
 jobs:
-  serving_to_staging:
-    if: ${{ github.ref }} == 'refs/heads/development'
+  serving_to_production:
+    if: github.event.pull_request.merged == true
     runs-on: self-hosted
     environment:
       name: Staging
