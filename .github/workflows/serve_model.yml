@@ -36,7 +36,7 @@ jobs:
         id: test_inference_service
         run: python3 ./github_actions/test_inference_service.py --endpoint=${{ secrets.KUBEFLOW_ENDPOINT }} --username=${{ secrets.KUBEFLOW_USERNAME }} --password=${{ secrets.KUBEFLOW_PASSWORD }} --model-name=${{ steps.output_repository_name.outputs.repository_name}} --hostname=${{ steps.output_virtual_hostname.outputs.virtual_hostname}}
   serving_to_production:
-    if: $GITHUB_REF == 'refs/heads/main'
+    if: ${{ github.ref }} == 'refs/heads/main'
     runs-on: self-hosted
     environment:
       name: Production
