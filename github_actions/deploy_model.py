@@ -55,7 +55,12 @@ def create_inference_server(
                             spec=default_model_spec)
 
     # checking if there is a inference service which has same name as being about to created
-    is_inference_serive_exist = kserve.get(model_name, namespace=namespace)
+    try:
+        kserve.get(model_name, namespace=namespace)
+        is_inference_serive_exist = True
+    except Exception as e:
+        print(e)
+        is_inference_serive_exist = False
 
     # in case of inference serivce already exists
     if is_inference_serive_exist:
