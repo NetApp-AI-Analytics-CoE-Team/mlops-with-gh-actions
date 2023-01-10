@@ -1,0 +1,35 @@
+apiVersion: kubeflow.org/v1
+kind: Profile
+metadata:
+  name: experiment
+spec:
+  owner:
+    kind: User
+    name: yshimizu@netapp.com
+---
+apiVersion: kubeflow.org/v1
+kind: Profile
+metadata:
+  name: training
+spec:
+  owner:
+    kind: User
+    name: yshimizu@netapp.com
+---
+apiVersion: kubeflow.org/v1
+kind: Profile
+metadata:
+  name: staging
+spec:
+  owner:
+    kind: User
+    name: yshimizu@netapp.com
+---
+apiVersion: kubeflow.org/v1
+kind: Profile
+metadata:
+  name: production
+spec:
+  owner:
+    kind: User
+    name: yshimizu@netapp.com
