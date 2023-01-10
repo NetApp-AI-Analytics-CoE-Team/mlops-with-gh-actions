@@ -12,16 +12,12 @@ def create_snapshot(
   print(f"Snapshot name: {snapshot_name}")
   print(f"VolumeSnapshotClass name: {volume_snapshot_class}")
 
-  try: 
-    ndt.create_volume_snapshot(
-      pvc_name=pvc_name, 
-      snapshot_name=snapshot_name, 
-      volume_snapshot_class=volume_snapshot_class, 
-      namespace=namespace)
-    print("Taking snapshot has be successfully completed")
-
-  # Error handling
-  except Exception as e:
-    print(e)
+  ndt.create_volume_snapshot(
+    pvc_name=pvc_name, 
+    snapshot_name=snapshot_name, 
+    volume_snapshot_class=volume_snapshot_class, 
+    namespace=namespace)
+    
+  print("Taking snapshot has be successfully completed")
 
   return snapshot_name

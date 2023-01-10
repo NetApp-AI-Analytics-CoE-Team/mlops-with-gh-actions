@@ -1,5 +1,6 @@
 pipeline.yaml
 botsu/
+sandbox/
 # environments.yaml
 
 # Byte-compiled / optimized / DLL files
@@ -110,3 +111,5 @@ venv.bak/
 # compiled pipeline
 /test
 _pipeline.py
+pipeline_components/netapp_snapshot.py
+artifact-secert.yaml

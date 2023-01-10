@@ -14,7 +14,8 @@ def transfer_learning(
     momentum:float,
     label_smoothing:float,
     dropout_rate:float,
-    output_model_path:OutputPath('model')
+    output_model_path:OutputPath('model'),
+    output_history_path:OutputPath('history'),
     ):
     import itertools
     import os
@@ -93,7 +94,11 @@ def transfer_learning(
         validation_data=val_ds,
         validation_steps=validation_steps).history
     
+    # save history
     print(hist)
+    history_dict = hist.history
+    with open(output_history_path, mode='w') as f:
+      f.write(json.dump(history_dict))
 
     # saved_model_path = f"/tmp/saved_flowers_model_{model_name}"
     tf.saved_model.save(model, output_model_path)

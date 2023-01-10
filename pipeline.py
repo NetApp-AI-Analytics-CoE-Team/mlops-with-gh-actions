@@ -25,6 +25,13 @@ train_model_op = create_component_from_func(
   packages_to_install=["tensorflow_hub"]
   )
 
+# Visualize result
+from pipeline_components import visualize_history
+visualize_result_op = create_component_from_func(
+  visualize_history.markdown_vis,
+  base_image="python:3-slim",
+  )
+
 # Upload artifact
 from pipeline_components import upload_artifact
 upload_artifact_op = create_component_from_func(
@@ -92,7 +99,12 @@ def ai_training_run(
   if TRAIN_STEP_NUM_GPU > 0:
     train_task.set_gpu_limit(TRAIN_STEP_NUM_GPU, 'nvidia')
 
-  # STEP3: Update model to artifact repository
+  # STEP3: Visualize training result
+  visualize_task = visualize_result_op(
+    input_history = train_task.outputs["output_history"],
+  ).set_display_name('Visualizer').set_caching_options(enable_caching=False)
+
+  # STEP4: Update model to artifact repository
   upload_task = upload_artifact_op(
     input_model = train_task.outputs["output_model"],
     archive_name = kfp.dsl.RUN_ID_PLACEHOLDER, # use RUN ID as s3 object name
