@@ -1,4 +1,4 @@
-name: Serving AI/ML model
+name: Serving AI/ML model (STAGING)
 on: 
   push:
     branches:
