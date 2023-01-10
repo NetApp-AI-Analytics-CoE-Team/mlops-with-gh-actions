@@ -1,0 +1,18 @@
+# if you want to use JupyterLab workspaces provisioned via NetApp DataOps Toolkit
+# and your namespace where workspaces are provisioned at is istio injected,
+# you need to create AuthorizationPolicy or you can NOT access to your workspaces 
+apiVersion: security.istio.io/v1beta1
+kind: AuthorizationPolicy
+metadata:
+  name: allow-netapp-dataops
+  namespace: <YOUR_NAMESPACE>
+spec:
+  selector:
+    matchLabels:
+      created-by: ntap-dsutil # allow access to workspaces that is provisoned by NetApp DataOps Toolkit
+  action: ALLOW
+  rules:
+  - to:
+    - operation:
+        paths:
+        - /*

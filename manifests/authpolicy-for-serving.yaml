@@ -1,0 +1,23 @@
+# To allow access to predictors provisioned by KServe,
+# you need to create a AuthorizationPolicy in the istio's namespace
+# see: https://github.com/awslabs/kubeflow-manifests/issues/82#issuecomment-1068641378
+apiVersion: security.istio.io/v1beta1
+kind: AuthorizationPolicy
+metadata:
+  name: allow-predictor
+  namespace: istio-system
+spec:
+  selector:
+    matchLabels:
+      component: predictor
+  action: ALLOW
+  rules:
+  - to:
+    - operation:
+        paths:
+        - /metrics
+        - /healthz
+        - /ready
+        - /wait-for-drain
+        - /v1/models/*
+        - /v2/models/*

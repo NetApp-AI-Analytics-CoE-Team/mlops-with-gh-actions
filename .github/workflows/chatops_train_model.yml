@@ -215,33 +215,39 @@ jobs:
           message+="${lf}Model package is stored in the artifact repository."
           message+="<br />"
           message+="${lf}Artifact URI: ${{ steps.output_model_uri.outputs.model_uri }}"
+          message+="${lf}## :rocket: How to serve the model"
+          message+="${lf}To serve this model, post a PR comment as below."
+          message+="<br />"
+          message+="\`/serve-model ${{ steps.output_model_uri.outputs.model_uri }}\`"
           message+="${lf}## :mag: How to reproduce the model"
           message+="${lf}To reproduce this model, you can create a Jupyter Workspace which contains source code, hyper parameters, and dataset version by performing following tasks"
           message+="<br /><details>"
           message+="<summary>show procedure</summary>"
           message+="${lf}1. Login to workstation which can access to k8s API"
-          message+="${lf}2. Restore dataset version by using NetApp DataOps Tooklkit"
+          message+="${lf}2. Install NetApp DataOps Toolkit"
           message+="${lf}\`\`\`bash"
-          message+="${lf}# Install NetApp DataOps Toolkit"
-          message+="${lf}$ python3 -m pip install netapp-dataops-k8s"
-          message+="${lf}"
-          message+="${lf}# Clone PVC from snapshot that was taken at model training"
-          message+="${lf}$ netapp_dataops_k8s_cli.py clone volume --namespace=${{ secrets.NAMESPACE }} --source-snapshot-name=${{ steps.output_dataset_version.outputs.dataset_version }} --new-pvc-name=clone-${{ steps.output_dataset_version.outputs.dataset_version }}"
+          message+="${lf}python3 -m pip install netapp-dataops-k8s"
           message+="${lf}\`\`\`"
-          message+="${lf}3. Create Jupyter workspace with cloned PVC by using NetApp DataOps Toolkit"
+          message+="${lf}3. Clone dataset version by using NetApp DataOps Tooklkit"
           message+="${lf}\`\`\`bash"
-          message+="${lf}# Create Jupyter workspace using cloned PVC"
-          message+="${lf}$ netapp_dataops_k8s_cli.py create jupyterlab --namespace=${{ secrets.NAMESPACE }} --workspace-name=reproduce-${{ needs.initiate-model-training-run.outputs.run_id }} --size=10Gi --mount-pvc=clone-${{ steps.output_dataset_version.outputs.dataset_version }} --nvidia-gpu=1"
+          message+="${lf}netapp_dataops_k8s_cli.py clone volume --namespace=${{ secrets.NAMESPACE }} --source-snapshot-name=${{ steps.output_dataset_version.outputs.dataset_version }} --new-pvc-name=clone-${{ steps.output_dataset_version.outputs.dataset_version }}"
           message+="${lf}\`\`\`"
-          message+="${lf}4. Connect the workspace provisioned by NetApp DataOps Tooklkit"
+          message+="${lf}4. Create Jupyter workspace with cloned PVC by using NetApp DataOps Toolkit"
+          message+="${lf}\`\`\`bash"
+          message+="${lf}netapp_dataops_k8s_cli.py create jupyterlab --namespace=${{ secrets.NAMESPACE }} --workspace-name=${{ needs.initiate-model-training-run.outputs.run_id }} --size=10Gi --mount-pvc=clone-${{ steps.output_dataset_version.outputs.dataset_version }}:/workspace/dataset --nvidia-gpu=1"
+          message+="${lf}\`\`\`"
+          message+="${lf}5. Connect the workspace provisioned by NetApp DataOps Tooklkit"
           message+="${lf}You can find Workspace URL in result of \`netapp_dataops_k8s_cli.py create jupyterlab\` command."
-          message+="${lf}5. Resotre the source code and hyper parameters from GitHub commit"
+          message+="<br />"
+          message+="${lf}6. Clone this repo"
           message+="${lf}\`\`\`bash"
-          message+="${lf}# Open a terminal in Jupyter Workspace and execute below commandline"
-          message+="${lf}$ git clone ${{ github.repository }} ."
-          message+="${lf}$ git reset -hard ${{ needs.detect_pr_comments.outputs.commit_sha }}"
+          message+="${lf}git clone https://github.com/${{ github.repository }}"
           message+="${lf}\`\`\`"
-          message+="</details>"
+          message+="${lf}7. Resotre the source code and hyper parameters from commit used at model training"
+          message+="${lf}\`\`\`bash"
+          message+="${lf}git reset --hard ${{ needs.detect_pr_comments.outputs.commit_sha }}"
+          message+="${lf}\`\`\`"
+          message+="<br /></details>"
           echo "message=${message}" >> $GITHUB_OUTPUT
       - name: commenting on PR (Succeeded) 
         if: needs.wait-for-run-completion.outputs.run_status == 'Succeeded'
@@ -256,17 +262,17 @@ jobs:
               body: '${{ steps.success_comment.outputs.message }}'
             }
             await github.rest.issues.createComment(params)
-      - name: applying label (Succeeded)
-        if: needs.wait-for-run-completion.outputs.run_status == 'Succeeded'
-        uses: actions/github-script@v6
-        with:
-          script: |
-            github.rest.issues.addLabels({
-              issue_number: context.issue.number,
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              labels: ["model-is-ready"]
-            })
+      # - name: applying label (Succeeded)
+      #   if: needs.wait-for-run-completion.outputs.run_status == 'Succeeded'
+      #   uses: actions/github-script@v6
+      #   with:
+      #     script: |
+      #       github.rest.issues.addLabels({
+      #         issue_number: context.issue.number,
+      #         owner: context.repo.owner,
+      #         repo: context.repo.repo,
+      #         labels: ["model-is-ready"]
+      #       })
       # in case of run failed
       - name: commenting on PR (Failed) 
         if: needs.wait-for-run-completion.outputs.run_status == 'Failed'

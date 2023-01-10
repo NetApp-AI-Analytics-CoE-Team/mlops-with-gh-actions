@@ -25,9 +25,8 @@ jobs:
         if: steps.prcomm_serve.outputs.BOOL_TRIGGERED == 'false'
         run: /bin/bash -c false
       # output variables for following jobs
-      - id: output_model_uri
+      - id: create_outputs
         run: echo "model_uri=${{ steps.prcomm_serve.outputs.TRAILING_TOKEN }}" >> $GITHUB_OUTPUT
-      - id: output_sha
         run: echo "sha=${{ steps.prcomm_serve.outputs.SHA }}" >> $GITHUB_OUTPUT
   serving:
     runs-on: self-hosted
@@ -52,4 +51,49 @@ jobs:
         id: output_virtual_hostname
         run: echo "virtual_hostname=`echo ${{ steps.output_repository_name.outputs.repository_name}}.${{ secrets.NAMESPACE }}.example.com`" >> $GITHUB_OUTPUT
       - name: test inference server
+        id: test_inference_service
         run: python3 ./github_actions/test_inference_service.py --endpoint=${{ secrets.KUBEFLOW_ENDPOINT }} --username=${{ secrets.KUBEFLOW_USERNAME }} --password=${{ secrets.KUBEFLOW_PASSWORD }} --model-name=${{ steps.output_repository_name.outputs.repository_name}} --hostname=${{ steps.output_virtual_hostname.outputs.virtual_hostname}}
+      # in case of passed the test
+      - name: setup comment message (passed)
+        if: ${{ steps.test_inference_service.result == 'success' }}
+        id: success_comment
+        run: |
+          lf='\n'
+          message="## :pushpin: Actions Result - Serving ML Model"
+          message+="${lf}:rocket: ML model has been successfully served"
+          echo "message=${message}" >> $GITHUB_OUTPUT
+      - name: commenting on PR (passed) 
+        if: ${{ needs.initiate-model-training-run.result == 'success' }}
+        uses: actions/github-script@v6
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const params = {
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body: '${{ steps.success_comment.outputs.message }}'
+            }
+            await github.rest.issues.createComment(params)
+      # in case of failed
+      - name: setup comment message (failure)
+        if: ${{ needs.initiate-model-training-run.result == 'failure' }}
+        id: failure_comment
+        run: |
+          lf='\n'
+          message="## :pushpin: Actions Result - Serving ML Model"
+          message+="${lf}:x: ML model has been deployed but failed to pass the test"
+          echo "message=${message}" >> $GITHUB_OUTPUT
+      - name: commenting on PR (failure) 
+        if: ${{ needs.initiate-model-training-run.result == 'failure' }}
+        uses: actions/github-script@v6
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const params = {
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body: '${{ steps.failure_comment.outputs.message }}'
+            }
+            await github.rest.issues.createComment(params)
