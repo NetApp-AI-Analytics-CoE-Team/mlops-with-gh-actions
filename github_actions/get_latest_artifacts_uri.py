@@ -60,6 +60,7 @@ if __name__ == '__main__':
     try:
         ret = get_latest_object_name(SESSION, args.bucket, args.prefix)
         print(f"s3://{args.bucket}/{ret}")
-        sys.exit(0)
     except:
         sys.exit(1)
+
+    sys.exit(0)
