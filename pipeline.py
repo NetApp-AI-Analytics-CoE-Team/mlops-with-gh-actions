@@ -30,7 +30,7 @@ from pipeline_components import visualize_history
 visualize_result_op = create_component_from_func(
   visualize_history.markdown_vis,
   base_image="python:3-slim",
-  packages_to_install=["pandas"]
+  packages_to_install=["pandas", "tabulate"]
   )
 
 # Upload artifact
