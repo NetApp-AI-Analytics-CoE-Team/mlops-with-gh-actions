@@ -2,7 +2,7 @@ from kfp.components import InputPath,OutputPath
 
 def markdown_vis(
     input_history_path:InputPath('history'),
-    mlpipeline_ui_metadata_path: kfp.components.OutputPath()
+    mlpipeline_ui_metadata_path: OutputPath()
     ):
     import json
     import pandas
