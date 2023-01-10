@@ -45,7 +45,7 @@ def create_inference_server(
 
     default_model_spec = V1beta1InferenceServiceSpec(
         predictor=V1beta1PredictorSpec(
-            service_account_name='kserve-service-credentials',
+            service_account_name=model_name,
             tensorflow=V1beta1TFServingSpec(storage_uri=s3_uri)
         ))
 
