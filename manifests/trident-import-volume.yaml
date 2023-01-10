@@ -1,0 +1,11 @@
+kind: PersistentVolumeClaim
+apiVersion: v1
+metadata:
+  name: datalake-dst
+  namespace: rawdata
+  annotations:
+    trident.netapp.io/shareToNamespace: experiment
+spec:
+  accessModes:
+    - ReadOnlyMany
+  storageClassName: ontap-flexvol

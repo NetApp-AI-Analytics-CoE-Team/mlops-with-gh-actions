@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+    name: clone-of-pvc
+    namespace: experiment
+spec:
+  accessModes:
+  - ReadWriteOnce
+  storageClassName: ontap-flexvol
+  resources:
+    requests:
+      storage: 100Gi
+  dataSource:
+    kind: PersistentVolumeClaim
+    name: datalake-dst

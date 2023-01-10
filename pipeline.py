@@ -44,10 +44,8 @@ Building pipeline DAG
 def ai_training_run(
   # Define pipeline parameters
   dataset_pvc_name: str="dataset-flower",
-  # model_pvc_name: str="model",
-  kubeflow_user_namespace: str="kubeflow-user-example-com",
+  training_namespace: str="kubeflow-user-example-com",
   volume_snapshot_class :str="csi-snapclass",
-  # train_step_num_gpu:int=1,
   batch_size:int=16,
   epochs:int=5,
   learning_rate:float=0.005,
@@ -59,7 +57,7 @@ def ai_training_run(
   SNAPSHOT_NAME = f"{dataset_pvc_name}-{kfp.dsl.RUN_ID_PLACEHOLDER}"
   MODEL_NAME = "flower-classifier"
   MODEL_METADATA = {
-    "x-amz-meta-NAMESPACE-TRAINED-AT": kubeflow_user_namespace,
+    "x-amz-meta-NAMESPACE-TRAINED-AT": training_namespace,
     "x-amz-meta-DATASET-PVC-NAME": dataset_pvc_name,
     "x-amz-meta-DATASET-VERSION-NAME": SNAPSHOT_NAME,
     "x-amz-meta-KFP-RUN-ID": kfp.dsl.RUN_ID_PLACEHOLDER
@@ -68,7 +66,7 @@ def ai_training_run(
 
   # STEP1: Taking snapshot before training 
   snapshot_before_training = create_snapshot_op(
-    namespace=kubeflow_user_namespace, 
+    namespace=training_namespace, 
     pvc_name=dataset_pvc_name, 
     snapshot_name=SNAPSHOT_NAME,
     volume_snapshot_class=volume_snapshot_class

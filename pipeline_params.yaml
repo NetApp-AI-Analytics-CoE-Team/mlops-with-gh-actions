@@ -1,5 +1,5 @@
 dataset_pvc_name: dataset-flower
-kubeflow_user_namespace: training
+training_namespace: training
 volume_snapshot_class: csi-snapclass
 batch_size: 16
 epochs: 2
