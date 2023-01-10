@@ -6,7 +6,7 @@ on:
       - 'development'
 jobs:
   serving_to_staging:
-    if: $GITHUB_REF == 'refs/heads/development'
+    if: ${{ github.ref }} == 'refs/heads/development'
     runs-on: self-hosted
     environment:
       name: Staging
