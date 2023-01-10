@@ -98,7 +98,7 @@ def transfer_learning(
     # save history
     print(hist)
     with open(output_history_path, mode='w') as f:
-      f.write(json.dump(hist))
+      f.write(json.dumps(hist))
 
     # saved_model_path = f"/tmp/saved_flowers_model_{model_name}"
     tf.saved_model.save(model, output_model_path)
