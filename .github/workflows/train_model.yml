@@ -109,7 +109,7 @@ jobs:
           To reproduce this model, you can create a Jupyter Workspace which contains source code, hyper parameters, and dataset version by performing following tasks
           <details>
           <summary>show procedure</summary>
-          1. Login to workstation which can access to k8s API
+          1. Login to workstation which can access to Training Cluster's k8s api
           2. Install NetApp DataOps Toolkit
           \`\`\`bash
           python3 -m pip install netapp-dataops-k8s

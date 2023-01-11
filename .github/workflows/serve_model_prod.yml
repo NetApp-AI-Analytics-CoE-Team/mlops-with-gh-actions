@@ -2,7 +2,7 @@ name: Serve AI/ML model (PRODUCTION)
 on:
   pull_request:
     branches:
-      - master
+      - main
     types: [closed]
 jobs:
   serving_to_production:
