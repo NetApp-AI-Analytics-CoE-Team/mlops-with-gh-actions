@@ -36,21 +36,6 @@ jobs:
             --output-file=tmp_run_id.txt
       - id: output_run_id
         run: echo "run_id=`cat tmp_run_id.txt`" >> $GITHUB_OUTPUT
-      # post a comment to notify pipeline run has been started
-      - name: setup comment message (run started)
-        id: start_run_comment
-        run: |
-          cat << EOF > comments
-          ## :rocket: Pipeline has been launched
-          You will be notified when the pipeline RUN is completed or exceeded timeout.
-          Or you can check detailed status of RUN in Kubeflow UI on your training cluster.
-          EOF
-      - name: Post comments
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          URL: ${{ github.event.pull_request.html_url }}
-        run:
-          gh pr comment -F ./comments "${URL}"
       # wait for completion of run
       - name: wait for pipeline run
         id: run_waiter
