@@ -109,19 +109,24 @@ jobs:
           To reproduce this model, you can create a Jupyter Workspace which contains source code, hyper parameters, and dataset version by performing following tasks
           <details>
           <summary>show procedure</summary>
+           
           1. Login to workstation which can access to Training Cluster's k8s api
+           
           2. Install NetApp DataOps Toolkit
           \`\`\`bash
           python3 -m pip install netapp-dataops-k8s
           \`\`\`
+           
           3. Clone dataset version by using NetApp DataOps Tooklkit
           \`\`\`bash
           netapp_dataops_k8s_cli.py clone volume --namespace=${{ secrets.NAMESPACE }} --source-snapshot-name=${{ needs.build-and-run-mlpipeline.outputs.dataset_version }} --new-pvc-name=clone-${{ needs.build-and-run-mlpipeline.outputs.dataset_version }}
           \`\`\`
+           
           4. Create Jupyter workspace with cloned PVC by using NetApp DataOps Toolkit
           \`\`\`bash
           netapp_dataops_k8s_cli.py create jupyterlab --namespace=${{ secrets.NAMESPACE }} --workspace-name=${{ needs.build-and-run-mlpipeline.outputs.run_id }} --size=10Gi --mount-pvc=clone-${{ needs.build-and-run-mlpipeline.outputs.dataset_version }}:/workspace/dataset --nvidia-gpu=1
           \`\`\`
+           
           5. Connect the workspace provisioned by NetApp DataOps Tooklkit
           You can find Workspace URL in result of \`netapp_dataops_k8s_cli.py create jupyterlab\` command.
            
@@ -129,7 +134,8 @@ jobs:
           \`\`\`bash
           git clone https://github.com/${{ github.repository }}
           \`\`\`
-          7. Resotre the source code and hyper parameters from commit used at model training
+           
+          7. Resotre the code and hyper parameters from merged commit used at this model training
           \`\`\`bash
           git reset --hard ${{ github.sha }}
           \`\`\`
@@ -141,8 +147,8 @@ jobs:
         id: failed_comment
         run: | 
           cat << EOF > comments
-          ## :pushpin: Actions Result - Result of ML Pipeline Run
-          :x: Pipeline RUN: \`${{ needs.build-and-run-mlpipeline.outputs.run_id }}\` has been completed with failure.
+          ## :x: Pipeline Result - Failed
+          Pipeline RUN: \`${{ needs.build-and-run-mlpipeline.outputs.run_id }}\` has been completed with failure.
            
           Check detailed status of pipeline RUN in Kubeflow UI
           ## :runner: Run information
@@ -156,8 +162,8 @@ jobs:
         id: timeout_comment
         run: | 
           cat << EOF > comments
-          ## :pushpin: Actions Result - Result of ML Pipeline Run
-          :x: Pipeline RUN: \`${{ needs.build-and-run-mlpipeline.outputs.run_id }}\` has exceeded timeout and NOT been completed yet.
+          ## :clock: Pipeline Result - TimeOut
+          Pipeline RUN: \`${{ needs.build-and-run-mlpipeline.outputs.run_id }}\` has exceeded timeout and NOT been completed yet.
            
           Check detailed status of pipeline RUN in Kubeflow UI
           ## :runner: Run information
