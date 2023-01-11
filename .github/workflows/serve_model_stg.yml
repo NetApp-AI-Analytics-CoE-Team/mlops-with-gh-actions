@@ -1,3 +1,4 @@
+name: Serve AI/ML model (STAGING)
 on:
   pull_request:
     branches:

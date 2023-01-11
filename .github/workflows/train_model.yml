@@ -59,7 +59,7 @@ jobs:
             --kf-username=${{ secrets.KUBEFLOW_USERNAME }} \
             --kf-password=${{ secrets.KUBEFLOW_PASSWORD }} \
             --namespace=${{ secrets.NAMESPACE }} \
-            --run-id=${{ needs.build-and-run-mlpipeline.outputs.run_id }} \
+            --run-id=${{ steps.output_run_id.outputs.run_id }} \
             --output-file=tmp_run_status.txt
       # get run's completion status
       - id: output_run_status
