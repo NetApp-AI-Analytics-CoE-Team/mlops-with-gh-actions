@@ -11,6 +11,8 @@ jobs:
     outputs: 
       run_id: ${{ steps.output_run_id.outputs.run_id }}
       run_status: ${{ steps.output_run_status.outputs.run_status }}
+      model_uri: ${{ steps.output_model_uri.outputs.model_uri }}
+      dataset_version: ${{ steps.output_dataset_version.outputs.dataset_version }}
     steps:
       # This step clones the branch of the PR associated with the triggering phrase, but only if it is triggered.
       - name: clone branch of PR
@@ -64,6 +66,40 @@ jobs:
       # get run's completion status
       - id: output_run_status
         run: echo "run_status=`cat tmp_run_status.txt`" >> $GITHUB_OUTPUT
+      # get model uri from pipeline RUN
+      - name: read artifact of run (model uri)
+        if: steps.output_run_status.outputs.run_status == 'Succeeded'
+        run: |
+          python3 ./github_actions/read_pipeline_output.py \
+            --k8s-context=${{ secrets.K8S_CONTEXT }} \
+            --kf-endpoint=${{ secrets.KUBEFLOW_ENDPOINT }} \
+            --kf-username=${{ secrets.KUBEFLOW_USERNAME }} \
+            --kf-password=${{ secrets.KUBEFLOW_PASSWORD }} \
+            --namespace=${{ secrets.NAMESPACE }} \
+            --run-id=${{ steps.output_run_id.outputs.run_id }} \
+            --component-name=upload-savedmodel \
+            --artifact-name=upload-savedmodel-Output \
+            --output-file=tmp_model_uri.txt
+      - id: output_model_uri
+        if: steps.output_run_status.outputs.run_status == 'Succeeded'
+        run: echo "model_uri=`cat tmp_model_uri.txt`" >> $GITHUB_OUTPUT
+      # get dataset version name from pipeline RUN
+      - name: read artifact of run (dataset version)
+        if: steps.output_run_status.outputs.run_status == 'Succeeded'
+        run: |
+          python3 ./github_actions/read_pipeline_output.py \
+            --k8s-context=${{ secrets.K8S_CONTEXT }} \
+            --kf-endpoint=${{ secrets.KUBEFLOW_ENDPOINT }} \
+            --kf-username=${{ secrets.KUBEFLOW_USERNAME }} \
+            --kf-password=${{ secrets.KUBEFLOW_PASSWORD }} \
+            --namespace=${{ secrets.NAMESPACE }} \
+            --run-id=${{ steps.output_run_id.outputs.run_id }} \
+            --component-name=create-snapshot \
+            --artifact-name=create-snapshot-Output \
+            --output-file=tmp_dataset_version.txt
+      - id: output_dataset_version
+        if: steps.output_run_status.outputs.run_status == 'Succeeded'
+        run: echo "dataset_version=`cat tmp_dataset_version.txt`" >> $GITHUB_OUTPUT
   #
   # post a PR comment
   #
@@ -71,40 +107,6 @@ jobs:
     needs: build-and-run-mlpipeline
     runs-on: self-hosted
     steps:
-      # get model uri from pipeline RUN
-      - name: read artifact of run (model uri)
-        if: needs.build-and-run-mlpipeline.outputs.run_status == 'Succeeded'
-        run: |
-          python3 ./github_actions/read_pipeline_output.py \
-            --k8s-context=${{ secrets.K8S_CONTEXT }} \
-            --kf-endpoint=${{ secrets.KUBEFLOW_ENDPOINT }} \
-            --kf-username=${{ secrets.KUBEFLOW_USERNAME }} \
-            --kf-password=${{ secrets.KUBEFLOW_PASSWORD }} \
-            --namespace=${{ secrets.NAMESPACE }} \
-            --run-id=${{ needs.build-and-run-mlpipeline.outputs.run_id }} \
-            --component-name=upload-savedmodel \
-            --artifact-name=upload-savedmodel-Output \
-            --output-file=tmp_model_uri.txt
-      - id: output_model_uri
-        if: needs.build-and-run-mlpipeline.outputs.run_status == 'Succeeded'
-        run: echo "model_uri=`cat tmp_model_uri.txt`" >> $GITHUB_OUTPUT
-      # get dataset version name from pipeline RUN
-      - name: read artifact of run (dataset version)
-        if: needs.build-and-run-mlpipeline.outputs.run_status == 'Succeeded'
-        run: |
-          python3 ./github_actions/read_pipeline_output.py \
-            --k8s-context=${{ secrets.K8S_CONTEXT }} \
-            --kf-endpoint=${{ secrets.KUBEFLOW_ENDPOINT }} \
-            --kf-username=${{ secrets.KUBEFLOW_USERNAME }} \
-            --kf-password=${{ secrets.KUBEFLOW_PASSWORD }} \
-            --namespace=${{ secrets.NAMESPACE }} \
-            --run-id=${{ needs.build-and-run-mlpipeline.outputs.run_id }} \
-            --component-name=create-snapshot \
-            --artifact-name=create-snapshot-Output \
-            --output-file=tmp_dataset_version.txt
-      - id: output_dataset_version
-        if: needs.build-and-run-mlpipeline.outputs.run_status == 'Succeeded'
-        run: echo "dataset_version=`cat tmp_dataset_version.txt`" >> $GITHUB_OUTPUT
       # post a comment to notify pipeline run has been ended with success
       - name: setup comment message (Succeeded)
         if: needs.build-and-run-mlpipeline.outputs.run_status == 'Succeeded'
@@ -117,7 +119,7 @@ jobs:
           Model package is stored in the artifact repository.
           Once this PR has been merged, model will be served.          
            
-          Artifact URI: ${{ steps.output_model_uri.outputs.model_uri }}
+          Artifact URI: ${{ needs.build-and-run-mlpipeline.outputs.model_uri }}
           ## :mag: How to reproduce the model
           To reproduce this model, you can create a Jupyter Workspace which contains source code, hyper parameters, and dataset version by performing following tasks
           <details>
@@ -129,11 +131,11 @@ jobs:
           \`\`\`
           3. Clone dataset version by using NetApp DataOps Tooklkit
           \`\`\`bash
-          netapp_dataops_k8s_cli.py clone volume --namespace=${{ secrets.NAMESPACE }} --source-snapshot-name=${{ steps.output_dataset_version.outputs.dataset_version }} --new-pvc-name=clone-${{ steps.output_dataset_version.outputs.dataset_version }}
+          netapp_dataops_k8s_cli.py clone volume --namespace=${{ secrets.NAMESPACE }} --source-snapshot-name=${{ needs.build-and-run-mlpipeline.outputs.dataset_version }} --new-pvc-name=clone-${{ needs.build-and-run-mlpipeline.outputs.dataset_version }}
           \`\`\`
           4. Create Jupyter workspace with cloned PVC by using NetApp DataOps Toolkit
           \`\`\`bash
-          netapp_dataops_k8s_cli.py create jupyterlab --namespace=${{ secrets.NAMESPACE }} --workspace-name=${{ needs.build-and-run-mlpipeline.outputs.run_id }} --size=10Gi --mount-pvc=clone-${{ steps.output_dataset_version.outputs.dataset_version }}:/workspace/dataset --nvidia-gpu=1
+          netapp_dataops_k8s_cli.py create jupyterlab --namespace=${{ secrets.NAMESPACE }} --workspace-name=${{ needs.build-and-run-mlpipeline.outputs.run_id }} --size=10Gi --mount-pvc=clone-${{ needs.build-and-run-mlpipeline.outputs.dataset_version }}:/workspace/dataset --nvidia-gpu=1
           \`\`\`
           5. Connect the workspace provisioned by NetApp DataOps Tooklkit
           You can find Workspace URL in result of \`netapp_dataops_k8s_cli.py create jupyterlab\` command.
