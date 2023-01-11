@@ -15,7 +15,7 @@ def markdown_vis(
     # convert history json to markdown
     df = pandas.DataFrame.from_dict(data)
     df.insert(0, 'epochs', range(1, len(df.index) + 1))
-    df_md = df.to_markdown(index=False, tablefmt="grid")
+    df_md = df.to_markdown(index=False)
         
     metadata = {
         'outputs' : [
