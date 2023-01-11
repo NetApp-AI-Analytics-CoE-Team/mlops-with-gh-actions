@@ -1,0 +1,186 @@
+name: Training AI/ML model
+on:
+  pull_request_review:
+    types: [submitted]
+jobs:
+  build-and-run-mlpipeline:
+    if: github.event.review.state == 'approved'
+    runs-on: self-hosted
+    environment:
+      name: Training
+    outputs: 
+      run_id: ${{ steps.output_run_id.outputs.run_id }}
+      run_status: ${{ steps.output_run_status.outputs.run_status }}
+    steps:
+      # This step clones the branch of the PR associated with the triggering phrase, but only if it is triggered.
+      - name: clone branch of PR
+        uses: actions/checkout@master
+      # building pipeline package
+      # expects pipeline function is declared in "./pipline.py"
+      - name: build pipeline
+        run: python3 ./pipeline.py ./pipeline.yaml
+      - name: deploy and run pipeline
+        id: train_launcher
+        run: |
+          python3 ./github_actions/deploy_pipeline.py \
+            --k8s-context=${{ secrets.K8S_CONTEXT }} \
+            --kf-endpoint=${{ secrets.KUBEFLOW_ENDPOINT }} \
+            --kf-username=${{ secrets.KUBEFLOW_USERNAME }} \
+            --kf-password=${{ secrets.KUBEFLOW_PASSWORD }} \
+            --namespace=${{ secrets.NAMESPACE }} \
+            --kf-experiment-name=${{ secrets.KUBEFLOW_EXPERIMENT_NAME }} \
+            --pipeline-package-path=pipeline.yaml \
+            --pipeline-version=${{ github.sha }} \
+            --output-file=tmp_run_id.txt
+      - id: output_run_id
+        run: echo "run_id=`cat tmp_run_id.txt`" >> $GITHUB_OUTPUT
+      # post a comment to notify pipeline run has been started
+      - name: setup comment message (run started)
+        id: start_run_comment
+        run: |
+          cat << EOF > comments
+          ## :rocket: Pipeline has been launched
+          You will be notified when the pipeline RUN is completed or exceeded timeout.
+          Or you can check detailed status of RUN in Kubeflow UI on your training cluster.
+          EOF
+      - name: Post comments
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          URL: ${{ github.event.pull_request.html_url }}
+        run:
+          gh pr comment -F ./comments "${URL}"
+      # wait for completion of run
+      - name: wait for pipeline run
+        id: run_waiter
+        run: | 
+          python3 ./github_actions/wait_run_completion.py \
+            --k8s-context=${{ secrets.K8S_CONTEXT }} \
+            --kf-endpoint=${{ secrets.KUBEFLOW_ENDPOINT }} \
+            --kf-username=${{ secrets.KUBEFLOW_USERNAME }} \
+            --kf-password=${{ secrets.KUBEFLOW_PASSWORD }} \
+            --namespace=${{ secrets.NAMESPACE }} \
+            --run-id=${{ needs.build-and-run-mlpipeline.outputs.run_id }} \
+            --output-file=tmp_run_status.txt
+      # get run's completion status
+      - id: output_run_status
+        run: echo "run_status=`cat tmp_run_status.txt`" >> $GITHUB_OUTPUT
+  #
+  # post a PR comment
+  #
+  post_run_result: 
+    needs: build-and-run-mlpipeline
+    runs-on: self-hosted
+    steps:
+      # get model uri from pipeline RUN
+      - name: read artifact of run (model uri)
+        if: needs.build-and-run-mlpipeline.outputs.run_status == 'Succeeded'
+        run: |
+          python3 ./github_actions/read_pipeline_output.py \
+            --k8s-context=${{ secrets.K8S_CONTEXT }} \
+            --kf-endpoint=${{ secrets.KUBEFLOW_ENDPOINT }} \
+            --kf-username=${{ secrets.KUBEFLOW_USERNAME }} \
+            --kf-password=${{ secrets.KUBEFLOW_PASSWORD }} \
+            --namespace=${{ secrets.NAMESPACE }} \
+            --run-id=${{ needs.build-and-run-mlpipeline.outputs.run_id }} \
+            --component-name=upload-savedmodel \
+            --artifact-name=upload-savedmodel-Output \
+            --output-file=tmp_model_uri.txt
+      - id: output_model_uri
+        if: needs.build-and-run-mlpipeline.outputs.run_status == 'Succeeded'
+        run: echo "model_uri=`cat tmp_model_uri.txt`" >> $GITHUB_OUTPUT
+      # get dataset version name from pipeline RUN
+      - name: read artifact of run (dataset version)
+        if: needs.build-and-run-mlpipeline.outputs.run_status == 'Succeeded'
+        run: |
+          python3 ./github_actions/read_pipeline_output.py \
+            --k8s-context=${{ secrets.K8S_CONTEXT }} \
+            --kf-endpoint=${{ secrets.KUBEFLOW_ENDPOINT }} \
+            --kf-username=${{ secrets.KUBEFLOW_USERNAME }} \
+            --kf-password=${{ secrets.KUBEFLOW_PASSWORD }} \
+            --namespace=${{ secrets.NAMESPACE }} \
+            --run-id=${{ needs.build-and-run-mlpipeline.outputs.run_id }} \
+            --component-name=create-snapshot \
+            --artifact-name=create-snapshot-Output \
+            --output-file=tmp_dataset_version.txt
+      - id: output_dataset_version
+        if: needs.build-and-run-mlpipeline.outputs.run_status == 'Succeeded'
+        run: echo "dataset_version=`cat tmp_dataset_version.txt`" >> $GITHUB_OUTPUT
+      # post a comment to notify pipeline run has been ended with success
+      - name: setup comment message (Succeeded)
+        if: needs.build-and-run-mlpipeline.outputs.run_status == 'Succeeded'
+        id: success_comment
+        run: | 
+          cat << EOF > comments
+          ## :white_check_mark: Pipeline Result - Success
+          Pipeline RUN: \`${{ needs.build-and-run-mlpipeline.outputs.run_id }}\` has been successfully completed.
+          ## :brain: Model information
+          Model package is stored in the artifact repository.
+          Once this PR has been merged, model will be served.          
+           
+          Artifact URI: ${{ steps.output_model_uri.outputs.model_uri }}
+          ## :mag: How to reproduce the model
+          To reproduce this model, you can create a Jupyter Workspace which contains source code, hyper parameters, and dataset version by performing following tasks
+          <details>
+          <summary>show procedure</summary>
+          1. Login to workstation which can access to k8s API
+          2. Install NetApp DataOps Toolkit
+          \`\`\`bash
+          python3 -m pip install netapp-dataops-k8s
+          \`\`\`
+          3. Clone dataset version by using NetApp DataOps Tooklkit
+          \`\`\`bash
+          netapp_dataops_k8s_cli.py clone volume --namespace=${{ secrets.NAMESPACE }} --source-snapshot-name=${{ steps.output_dataset_version.outputs.dataset_version }} --new-pvc-name=clone-${{ steps.output_dataset_version.outputs.dataset_version }}
+          \`\`\`
+          4. Create Jupyter workspace with cloned PVC by using NetApp DataOps Toolkit
+          \`\`\`bash
+          netapp_dataops_k8s_cli.py create jupyterlab --namespace=${{ secrets.NAMESPACE }} --workspace-name=${{ needs.build-and-run-mlpipeline.outputs.run_id }} --size=10Gi --mount-pvc=clone-${{ steps.output_dataset_version.outputs.dataset_version }}:/workspace/dataset --nvidia-gpu=1
+          \`\`\`
+          5. Connect the workspace provisioned by NetApp DataOps Tooklkit
+          You can find Workspace URL in result of \`netapp_dataops_k8s_cli.py create jupyterlab\` command.
+           
+          6. Clone this repo
+          \`\`\`bash
+          git clone https://github.com/${{ github.repository }}
+          \`\`\`
+          7. Resotre the source code and hyper parameters from commit used at model training
+          \`\`\`bash
+          git reset --hard ${{ github.sha }}
+          \`\`\`
+          </details>
+          EOF
+      # in case of run Failed
+      - name: setup comment message (Failed) 
+        if: needs.build-and-run-mlpipeline.outputs.run_status == 'Failed'
+        id: failed_comment
+        run: | 
+          cat << EOF > comments
+          ## :pushpin: Actions Result - Result of ML Pipeline Run
+          :x: Pipeline RUN: \`${{ needs.build-and-run-mlpipeline.outputs.run_id }}\` has been completed with failure.
+           
+          Check detailed status of pipeline RUN in Kubeflow UI
+          ## :runner: Run information
+          Kubeflow Endpoint: ${{ needs.initiate-model-training-run.outputs.kubeflow_url }}
+          Kubeflow Profile(k8s namespace): ${{ secrets.NAMESPACE }}
+          RUN ID: ${{ needs.build-and-run-mlpipeline.outputs.run_id }}
+          EOF   
+      # in case of run timeouted
+      - name: setup comment message (timeout) 
+        if: needs.build-and-run-mlpipeline.outputs.run_status == 'TimeoutError'
+        id: timeout_comment
+        run: | 
+          cat << EOF > comments
+          ## :pushpin: Actions Result - Result of ML Pipeline Run
+          :x: Pipeline RUN: \`${{ needs.build-and-run-mlpipeline.outputs.run_id }}\` has exceeded timeout and NOT been completed yet.
+           
+          Check detailed status of pipeline RUN in Kubeflow UI
+          ## :runner: Run information
+          Kubeflow Endpoint: ${{ needs.initiate-model-training-run.outputs.kubeflow_url }}
+          Kubeflow Profile(k8s namespace): ${{ secrets.NAMESPACE }}
+          RUN ID: ${{ needs.build-and-run-mlpipeline.outputs.run_id }}
+          EOF      
+      - name: Post comments
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          URL: ${{ github.event.pull_request.html_url }}
+        run:
+          gh pr comment -F ./comments "${URL}"
