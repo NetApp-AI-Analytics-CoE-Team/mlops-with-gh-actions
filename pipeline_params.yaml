@@ -1,8 +1,8 @@
-dataset_pvc_name: dataset-flower
+dataset_pvc_name: dataset-cats
 training_namespace: training
 volume_snapshot_class: csi-snapclass
 batch_size: 16
-epochs: 4
+epochs: 5
 learning_rate: 0.005
 momentum: 0.9
 label_smoothing: 0.1
