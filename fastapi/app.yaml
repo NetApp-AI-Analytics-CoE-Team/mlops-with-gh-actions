@@ -1,23 +1,23 @@
 apiVersion: v1
 kind: Pod
 metadata:
-  name: fastapi
+  name: inference-api
   labels:
-    app: fastapi
+    app: inference
 spec:
   containers:
   - name: fastapi
-    image: kyonsy0722/my-fastapi:0.4-beta
+    image: kyonsy0722/my-fastapi:0.6-beta
     ports:
     - containerPort: 80
 ---
 apiVersion: v1
 kind: Service
 metadata:
-  name: fastapi-service
+  name: inference-api-service
 spec:
   selector:
-    app: fastapi
+    app: inference
   ports:
   - protocol: TCP
     port: 80
@@ -26,16 +26,16 @@ spec:
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
-  name: fastapi
+  name: inference-api
 spec:
   ingressClassName: "nginx"
   rules:
-  - host: fastapi.ps-lab3.local
+  - host: inference-api.ps-lab3.local
     http:
       paths:
       - pathType: ImplementationSpecific
         backend:
           service:
-            name: fastapi-service
+            name: inference-api-service
             port:
               number: 80
