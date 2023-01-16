@@ -86,7 +86,9 @@ def ai_training_run(
     snapshot_name=SNAPSHOT_NAME,
     volume_snapshot_class=volume_snapshot_class
     ).set_display_name('Dataset snapshoter')
-  snapshot_before_training.set_caching_options(enable_caching=False)
+  # disable caching
+  # snapshot_before_training.set_caching_options(enable_caching=False)
+  snapshot_before_training.execution_options.caching_strategy.max_cache_staleness = "P0D"
 
   # STEP2: Training model
   train_task = train_model_op(
@@ -99,7 +101,9 @@ def ai_training_run(
     label_smoothing=label_smoothing,
     dropout_rate=dropout_rate
     ).after(snapshot_before_training).set_display_name('Model trainer')
-  train_task.set_caching_options(enable_caching=False)
+  # disable caching
+  # train_task.set_caching_options(enable_caching=False)
+  train_task.execution_options.caching_strategy.max_cache_staleness = "P0D"
 
   # mount dataset PVC
   train_task.apply(
@@ -113,7 +117,9 @@ def ai_training_run(
   visualize_task = visualize_result_op(
     input_history = train_task.outputs["output_history"],
   ).set_display_name('Visualizer')
-  visualize_task.set_caching_options(enable_caching=False)
+  # disable caching
+  # visualize_task.set_caching_options(enable_caching=False)
+  visualize_task.execution_options.caching_strategy.max_cache_staleness = "P0D"
 
   # STEP4: Update model to artifact repository
   upload_task = upload_artifact_op(
@@ -122,7 +128,9 @@ def ai_training_run(
     model_name = MODEL_NAME,
     object_metadata = MODEL_METADATA
     ).set_display_name('Artifact uploader')
-  upload_task.set_caching_options(enable_caching=False)
+  # disable caching
+  # upload_task.set_caching_options(enable_caching=False)
+  upload_task.execution_options.caching_strategy.max_cache_staleness = "P0D"
 
   # pass s3 credentials to the task
   upload_task.apply(
