@@ -31,7 +31,8 @@ def transfer_learning(
     # MODEL_NAME = "efficientnetv2-xl-21k"
     MODEL_URL = "https://tfhub.dev/google/imagenet/inception_v3/feature_vector/5"
     IMAGE_SIZE = (299, 299)
-    DATASET_ROOT = os.path.join(data_dir, "flower_photos")
+    # DATASET_ROOT = os.path.join(data_dir, "flower_photos")
+    DATASET_ROOT = data_dir
 
     # preprocessing dataset
     # train_ds = build_dataset("training")

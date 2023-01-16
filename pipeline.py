@@ -52,7 +52,7 @@ Building pipeline DAG
 def ai_training_run(
   # Define pipeline parameters
   dataset_pvc_name: str="dataset-flower",
-  training_namespace: str="kubeflow-user-example-com",
+  training_namespace: str="training",
   volume_snapshot_class :str="csi-snapclass",
   batch_size:int=16,
   epochs:int=5,
@@ -61,7 +61,14 @@ def ai_training_run(
   label_smoothing:float=0.1,
   dropout_rate:float=0.2
 ):
-  DATASET_DIR = "/mnt/dataset"
+  DATASET_MNT_POINT = "/mnt/dataset"
+  if dataset_pvc_name == "dataset-cats":
+    DATASET_DIR = "/mnt/dataset/resized"
+  elif dataset_pvc_name == "dataset-flower":
+    DATASET_DIR = "/mnt/dataset/flower_photos"
+  else:
+    DATASET_DIR = "/mnt/dataset"
+
   SNAPSHOT_NAME = f"{dataset_pvc_name}-{kfp.dsl.RUN_ID_PLACEHOLDER}"
   MODEL_NAME = "flower-classifier"
   MODEL_METADATA = {
@@ -94,7 +101,7 @@ def ai_training_run(
 
   # mount dataset PVC
   train_task.apply(
-    onprem.mount_pvc(dataset_pvc_name, 'datavol', DATASET_DIR)
+    onprem.mount_pvc(dataset_pvc_name, 'datavol', DATASET_MNT_POINT)
   )
   # set gpu limit
   if TRAIN_STEP_NUM_GPU > 0:
