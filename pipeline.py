@@ -46,7 +46,7 @@ upload_artifact_op = create_component_from_func(
 Building pipeline DAG
 """ 
 @dsl.pipeline(
-  name="flower-image-classifier",
+  name="mlops-demo",
   description="Template for executing an AI training run with built-in training dataset traceability and trained model versioning",
 )
 def ai_training_run(
@@ -85,7 +85,8 @@ def ai_training_run(
     pvc_name=dataset_pvc_name, 
     snapshot_name=SNAPSHOT_NAME,
     volume_snapshot_class=volume_snapshot_class
-    ).set_display_name('Dataset snapshoter').set_caching_options(enable_caching=False)
+    ).set_display_name('Dataset snapshoter')
+  snapshot_before_training.set_caching_options(enable_caching=False)
 
   # STEP2: Training model
   train_task = train_model_op(
@@ -97,7 +98,8 @@ def ai_training_run(
     momentum=momentum,
     label_smoothing=label_smoothing,
     dropout_rate=dropout_rate
-    ).after(snapshot_before_training).set_display_name('Model trainer').set_caching_options(enable_caching=False)
+    ).after(snapshot_before_training).set_display_name('Model trainer')
+  train_task.set_caching_options(enable_caching=False)
 
   # mount dataset PVC
   train_task.apply(
@@ -110,7 +112,8 @@ def ai_training_run(
   # STEP3: Visualize training result
   visualize_task = visualize_result_op(
     input_history = train_task.outputs["output_history"],
-  ).set_display_name('Visualizer').set_caching_options(enable_caching=False)
+  ).set_display_name('Visualizer')
+  visualize_task.set_caching_options(enable_caching=False)
 
   # STEP4: Update model to artifact repository
   upload_task = upload_artifact_op(
@@ -118,7 +121,9 @@ def ai_training_run(
     archive_name = kfp.dsl.RUN_ID_PLACEHOLDER, # use RUN ID as s3 object name
     model_name = MODEL_NAME,
     object_metadata = MODEL_METADATA
-    ).set_display_name('Artifact uploader').set_caching_options(enable_caching=False)
+    ).set_display_name('Artifact uploader')
+  upload_task.set_caching_options(enable_caching=False)
+
   # pass s3 credentials to the task
   upload_task.apply(
     onprem.use_k8s_secret(
